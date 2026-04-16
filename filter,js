@@ -1,0 +1,319 @@
+(function () {
+  "use strict";
+
+  if (window.__AR_WALLET_BY_RS__) {
+    return;
+  }
+
+  const STATE = {
+    running: false,
+    clicks: 0,
+    status: "Idle",
+    lastClickAt: 0,
+    lastRefreshAt: 0,
+    lastScanAt: 0,
+    observerDirty: true,
+    loopTimer: null,
+    candidateCache: []
+  };
+
+  const CONFIG = {
+    scanIntervalMs: 1200,
+    minClickGapMs: 2500,
+    minRefreshGapMs: 15000,
+    cacheTtlMs: 1000,
+    panelId: "ar-wallet-by-rs-panel",
+    styleId: "ar-wallet-by-rs-style"
+  };
+
+  const SELECTOR = [
+    "button",
+    "a",
+    "[role='button']",
+    "input[type='button']",
+    "input[type='submit']"
+  ].join(",");
+
+  function now() {
+    return Date.now();
+  }
+
+  function isVisible(el) {
+    if (!el || !(el instanceof Element)) {
+      return false;
+    }
+
+    if (el.offsetParent === null && getComputedStyle(el).position !== "fixed") {
+      return false;
+    }
+
+    const style = getComputedStyle(el);
+    if (
+      style.display === "none" ||
+      style.visibility === "hidden" ||
+      style.opacity === "0" ||
+      style.pointerEvents === "none"
+    ) {
+      return false;
+    }
+
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
+
+  function getElementText(el) {
+    if (!el) {
+      return "";
+    }
+
+    if (el instanceof HTMLInputElement) {
+      return (el.value || "").trim();
+    }
+
+    return (el.textContent || "").trim();
+  }
+
+  function isBuyElement(el) {
+    return /buy/i.test(getElementText(el));
+  }
+
+  function refreshCandidateCache(force) {
+    const currentTime = now();
+    if (
+      !force &&
+      !STATE.observerDirty &&
+      currentTime - STATE.lastScanAt < CONFIG.cacheTtlMs
+    ) {
+      return STATE.candidateCache;
+    }
+
+    const nodes = document.querySelectorAll(SELECTOR);
+    const matches = [];
+
+    for (let i = 0; i < nodes.length; i += 1) {
+      const el = nodes[i];
+      if (isBuyElement(el) && isVisible(el)) {
+        matches.push(el);
+      }
+    }
+
+    STATE.candidateCache = matches;
+    STATE.lastScanAt = currentTime;
+    STATE.observerDirty = false;
+    return matches;
+  }
+
+  function getLastBuyButton() {
+    const matches = refreshCandidateCache(false);
+    return matches.length ? matches[matches.length - 1] : null;
+  }
+
+  function updateStatus(nextStatus) {
+    STATE.status = nextStatus;
+    statusValue.textContent = nextStatus;
+  }
+
+  function updateClicks() {
+    clickValue.textContent = String(STATE.clicks);
+  }
+
+  function safeClick(el) {
+    const currentTime = now();
+    if (currentTime - STATE.lastClickAt < CONFIG.minClickGapMs) {
+      return false;
+    }
+
+    try {
+      el.click();
+      STATE.lastClickAt = currentTime;
+      STATE.clicks += 1;
+      updateClicks();
+      updateStatus("Running");
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function safeRefresh() {
+    const currentTime = now();
+    if (currentTime - STATE.lastRefreshAt < CONFIG.minRefreshGapMs) {
+      return false;
+    }
+
+    STATE.lastRefreshAt = currentTime;
+    updateStatus("Running");
+    window.location.reload();
+    return true;
+  }
+
+  function loop() {
+    if (!STATE.running) {
+      return;
+    }
+
+    const target = getLastBuyButton();
+
+    if (target) {
+      safeClick(target);
+      return;
+    }
+
+    safeRefresh();
+  }
+
+  function start() {
+    if (STATE.running) {
+      updateStatus("Running");
+      return;
+    }
+
+    STATE.running = true;
+    STATE.observerDirty = true;
+    updateStatus("Running");
+
+    if (STATE.loopTimer) {
+      clearInterval(STATE.loopTimer);
+    }
+
+    STATE.loopTimer = setInterval(loop, CONFIG.scanIntervalMs);
+    loop();
+  }
+
+  function stop() {
+    STATE.running = false;
+    if (STATE.loopTimer) {
+      clearInterval(STATE.loopTimer);
+      STATE.loopTimer = null;
+    }
+    updateStatus("Stopped");
+  }
+
+  function injectStyles() {
+    if (document.getElementById(CONFIG.styleId)) {
+      return;
+    }
+
+    const style = document.createElement("style");
+    style.id = CONFIG.styleId;
+    style.textContent = `
+      #${CONFIG.panelId} {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        z-index: 2147483647;
+        width: 240px;
+        background: rgba(17, 24, 39, 0.96);
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        font-family: Arial, sans-serif;
+        padding: 14px;
+      }
+      #${CONFIG.panelId} * {
+        box-sizing: border-box;
+      }
+      #${CONFIG.panelId} .arw-title {
+        font-size: 16px;
+        font-weight: 700;
+        margin: 0 0 12px;
+      }
+      #${CONFIG.panelId} .arw-actions {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      #${CONFIG.panelId} .arw-btn {
+        flex: 1;
+        border: 0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        color: #fff;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      #${CONFIG.panelId} .arw-btn-start {
+        background: #16a34a;
+      }
+      #${CONFIG.panelId} .arw-btn-stop {
+        background: #dc2626;
+      }
+      #${CONFIG.panelId} .arw-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 14px;
+        margin-top: 6px;
+      }
+      #${CONFIG.panelId} .arw-label {
+        color: rgba(255, 255, 255, 0.72);
+      }
+      #${CONFIG.panelId} .arw-value {
+        color: #ffffff;
+        font-weight: 600;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function createPanel() {
+    const existing = document.getElementById(CONFIG.panelId);
+    if (existing) {
+      return existing;
+    }
+
+    const panel = document.createElement("div");
+    panel.id = CONFIG.panelId;
+    panel.innerHTML = `
+      <div class="arw-title">AR Wallet By RS</div>
+      <div class="arw-actions">
+        <button type="button" class="arw-btn arw-btn-start">Start</button>
+        <button type="button" class="arw-btn arw-btn-stop">Stop</button>
+      </div>
+      <div class="arw-row">
+        <span class="arw-label">Status</span>
+        <span class="arw-value arw-status">Idle</span>
+      </div>
+      <div class="arw-row">
+        <span class="arw-label">Clicks</span>
+        <span class="arw-value arw-clicks">0</span>
+      </div>
+    `;
+
+    document.body.appendChild(panel);
+    return panel;
+  }
+
+  function setupObserver() {
+    const observer = new MutationObserver(function () {
+      STATE.observerDirty = true;
+    });
+
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["style", "class", "hidden", "aria-hidden", "disabled", "value"]
+    });
+  }
+
+  injectStyles();
+  const panel = createPanel();
+  const startButton = panel.querySelector(".arw-btn-start");
+  const stopButton = panel.querySelector(".arw-btn-stop");
+  const statusValue = panel.querySelector(".arw-status");
+  const clickValue = panel.querySelector(".arw-clicks");
+
+  startButton.addEventListener("click", start);
+  stopButton.addEventListener("click", stop);
+
+  setupObserver();
+
+  window.__AR_WALLET_BY_RS__ = {
+    start: start,
+    stop: stop
+  };
+})();
