@@ -7,24 +7,26 @@
   const taco = new Audio("https://www.myinstants.com/media/sounds/taco-bell-bong.mp3");
   const cricket = new Audio("https://www.myinstants.com/media/sounds/cricket-sound.mp3");
 
-  function sleep(ms) {
-    return new Promise(r => setTimeout(r, ms));
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  function clickOTPUPI() {
+    document.querySelectorAll("button, div").forEach(el => {
+      if (el.innerText.toLowerCase().includes("otp-upi")) {
+        el.click();
+      }
+    });
   }
 
-  function clickDefault() {
+  function clickMobikwik() {
     document.querySelectorAll("button").forEach(b => {
-      if (b.innerText.toLowerCase().includes("default")) b.click();
+      if (b.innerText.toLowerCase().includes("mobikwik")) {
+        b.click();
+      }
     });
   }
 
   function onPaymentPage() {
     return document.body.innerText.toLowerCase().includes("select method payment");
-  }
-
-  function clickMobikwik() {
-    document.querySelectorAll("button").forEach(b => {
-      if (b.innerText.toLowerCase().includes("mobikwik")) b.click();
-    });
   }
 
   function findMatches(value) {
@@ -45,19 +47,32 @@
     return matches;
   }
 
+  function highlight(matches) {
+    document.querySelectorAll("[class*=row],[class*=item]").forEach(r=>{
+      r.style.outline = "";
+      r.style.background = "";
+    });
+
+    matches.slice(0,3).forEach(r=>{
+      r.style.outline="2px solid green";
+      r.style.background="rgba(0,255,0,0.1)";
+    });
+  }
+
   async function mainLoop(value, indicator) {
     while (running) {
 
-      let matches = findMatches(value);
+      // STEP 1: Always reset to OTP-UPI
+      clickOTPUPI();
+      await sleep(200);
 
-      // highlight top 3
-      matches.slice(0,3).forEach(r=>{
-        r.style.outline="2px solid green";
-        r.style.background="rgba(0,255,0,0.1)";
-      });
+      // STEP 2: Scan
+      let matches = findMatches(value);
+      highlight(matches);
 
       if (matches.length > 0) {
 
+        // STEP 3: Try top 3
         for (let row of matches.slice(0,3)) {
 
           const btn = row.querySelector("button");
@@ -66,12 +81,15 @@
           btn.click();
           await sleep(400);
 
+          // STEP 4: Check payment page
           if (onPaymentPage()) {
             taco.play();
 
-            await sleep(500);
+            await sleep(400);
 
             clickMobikwik();
+
+            await sleep(400);
 
             cricket.play();
 
@@ -80,13 +98,11 @@
           }
         }
 
-        // clicked but failed → retry
-        clickDefault();
+        // clicked but failed → retry fresh
         await sleep(200);
 
       } else {
-        // no match → reset & retry
-        clickDefault();
+        // no match → retry fresh
         await sleep(200);
       }
     }
@@ -129,6 +145,8 @@
 
     function start() {
       if (running) return;
+      if (!input.value.trim()) return alert("Enter amount");
+
       running = true;
       dot.style.background = "green";
 
