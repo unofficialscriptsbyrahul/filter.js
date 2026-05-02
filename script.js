@@ -4,35 +4,40 @@
 
   let running = false;
 
-  // ===== UI =====
-  const box = document.createElement("div");
-  box.style = `
-    position:fixed; bottom:20px; right:20px; width:220px;
-    background:#111; color:#fff; padding:12px;
-    border-radius:12px; z-index:999999;
+  // ===== UI (YOUR WHITE STYLE) =====
+  const ui = document.createElement("div");
+
+  ui.style = `
+    position:fixed;
+    bottom:20px;
+    right:20px;
+    width:240px;
+    background:rgba(255,255,255,0.6);
+    backdrop-filter:blur(10px);
+    color:#000;
+    padding:14px;
+    border-radius:14px;
+    z-index:999999999;
     font-family:sans-serif;
   `;
 
-  box.innerHTML = `
-    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-      <b>Auto Buy</b>
-      <span id="light" style="width:10px;height:10px;border-radius:50%;background:red;"></span>
+  ui.innerHTML = `
+    <div style="display:flex;justify-content:space-between;">
+      <div>💰 Bot</div>
+      <div id="dot" style="width:10px;height:10px;border-radius:50%;background:red;"></div>
     </div>
 
     <input id="amt" placeholder="Amount"
-      style="width:100%;padding:6px;margin-bottom:6px;border-radius:6px;" />
+      style="width:100%;margin-top:10px;padding:8px;border-radius:8px;border:1px solid #ccc;" />
 
-    <button id="start" style="width:100%;padding:6px;background:green;color:#fff;border:none;border-radius:6px;margin-bottom:6px;">Start</button>
-    <button id="stop" style="width:100%;padding:6px;background:red;color:#fff;border:none;border-radius:6px;">Stop</button>
-
-    <div id="status" style="margin-top:6px;font-size:12px;">Idle</div>
+    <button id="start" style="margin-top:10px;width:100%;padding:8px;background:#22c55e;color:#fff;border:none;border-radius:8px;">Start</button>
+    <button id="stop" style="margin-top:6px;width:100%;padding:8px;background:#ef4444;color:#fff;border:none;border-radius:8px;">Stop</button>
   `;
 
-  document.body.appendChild(box);
+  document.body.appendChild(ui);
 
-  const status = document.getElementById("status");
-  const light = document.getElementById("light");
-  const input = document.getElementById("amt");
+  const input = ui.querySelector("#amt");
+  const dot = ui.querySelector("#dot");
 
   // ===== SOUND =====
   const fahhh = new Audio("https://www.myinstants.com/media/sounds/fahh.mp3");
@@ -83,8 +88,7 @@
     aayeinn.play();
 
     running = false;
-    status.innerText = "Done";
-    light.style.background = "red";
+    dot.style.background = "red";
   }
 
   async function clickTargets(targets) {
@@ -124,21 +128,21 @@
     }
   }
 
-  // ===== CONTROLS =====
-  document.getElementById("start").onclick = () => {
+  function start() {
+    if (running) return;
     if (!input.value.trim()) return alert("Enter amount");
 
     running = true;
-    status.innerText = "Running";
-    light.style.background = "lime";
+    dot.style.background = "green";
 
     loop(input.value.trim());
-  };
+  }
 
-  document.getElementById("stop").onclick = () => {
+  function stop() {
     running = false;
-    status.innerText = "Stopped";
-    light.style.background = "red";
-  };
+    dot.style.background = "red";
+  }
 
+  ui.querySelector("#start").onclick = start;
+  ui.querySelector("#stop").onclick = stop;
 })();
