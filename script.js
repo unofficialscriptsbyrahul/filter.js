@@ -1,201 +1,156 @@
-(async function () {
+(function () {
   if (window.__BOT__) return;
   window.__BOT__ = true;
 
   let running = false;
 
+  // ===== UI =====
+  const box = document.createElement("div");
+  box.style = `
+    position:fixed; bottom:20px; right:20px; width:220px;
+    background:#111; color:#fff; padding:12px;
+    border-radius:12px; z-index:999999;
+    font-family:sans-serif;
+  `;
+
+  box.innerHTML = `
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <b>Auto Buy</b>
+      <span id="light" style="width:10px;height:10px;border-radius:50%;background:red;"></span>
+    </div>
+
+    <input id="amt" placeholder="Amount"
+      style="width:100%;padding:6px;margin-bottom:6px;border-radius:6px;" />
+
+    <button id="start" style="width:100%;padding:6px;background:green;color:#fff;border:none;border-radius:6px;margin-bottom:6px;">Start</button>
+    <button id="stop" style="width:100%;padding:6px;background:red;color:#fff;border:none;border-radius:6px;">Stop</button>
+
+    <div id="status" style="margin-top:6px;font-size:12px;">Idle</div>
+  `;
+
+  document.body.appendChild(box);
+
+  const status = document.getElementById("status");
+  const light = document.getElementById("light");
+  const input = document.getElementById("amt");
+
+  // ===== SOUND =====
   const fahhh = new Audio("https://www.myinstants.com/media/sounds/fahh.mp3");
   const aayeinn = new Audio("https://www.myinstants.com/media/sounds/aayein.mp3");
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  // ---------- DEBUG ----------
-  function log(msg) {
-    console.log("BOT:", msg);
-    const el = document.getElementById("bot-log");
-    if (el) el.innerText = msg;
+  function isPaymentPage() {
+    return document.body.innerText.includes("Select Method Payment");
   }
 
-  function text(el) {
-    return (el.innerText || "").toLowerCase().replace(/\s+/g, " ").trim();
-  }
+  // ===== ACTIONS =====
 
-  function onPaymentPage() {
-    return text(document.body).includes("select method payment");
-  }
-
-  // ---------- OTP CLICK ----------
-  function clickOTPUPI() {
-    const el = [...document.querySelectorAll("*")]
-      .find(e => text(e).includes("otp-upi") || text(e) === "otp upi");
-
-    if (el) {
-      el.click();
-      log("OTP-UPI clicked");
-      return true;
-    } else {
-      log("OTP-UPI NOT FOUND");
-      return false;
-    }
-  }
-
-  // ---------- FIND AMOUNTS ----------
-  function findMatches(value) {
-    const all = [...document.querySelectorAll("*")].filter(e =>
-      text(e).includes("₹")
-    );
-
-    const matches = all.filter(e => {
-      const t = text(e).replace(/\s/g,"");
-      return t.includes(`₹${value}`);
+  function clickOtpUpi() {
+    document.querySelectorAll(".tab-title").forEach(t => {
+      if (t.innerText.includes("OTP-UPI")) t.click();
     });
-
-    log("Matches: " + matches.length);
-    return matches;
   }
 
-  // ---------- FIND BUY BUTTON ----------
-  function getBuyButton(el) {
-    let node = el;
+  function findTargets(value) {
+    return Array.from(document.querySelectorAll(".amount"))
+      .filter(el => el.innerText.replace(/\s+/g,'') === `₹${value}`);
+  }
 
-    while (node && node !== document.body) {
-      const btn = [...node.querySelectorAll("button")]
-        .find(b => text(b).includes("buy"));
+  function highlight(el) {
+    el.style.outline = "2px solid lime";
+  }
 
-      if (btn) return btn;
-
-      node = node.parentElement;
+  function findBuy(startEl) {
+    let cur = startEl;
+    while (cur && cur !== document.body) {
+      let btn = cur.querySelector("button");
+      if (btn && btn.innerText.toLowerCase().includes("buy")) return btn;
+      cur = cur.parentElement;
     }
-
     return null;
   }
 
-  function highlight(matches) {
-    document.querySelectorAll("*").forEach(el => {
-      el.style.outline = "";
-    });
-
-    matches.slice(0,3).forEach(el => {
-      el.style.outline = "2px solid lime";
-    });
-  }
-
-  function clickMobikwikInstant() {
-    const el = [...document.querySelectorAll("*")]
-      .find(e => text(e).includes("mobikwik"));
+  function clickMobikwik() {
+    const el = document.querySelector(".bgmobikwik") ||
+               [...document.querySelectorAll("*")]
+               .find(e => (e.innerText || "").toLowerCase().includes("mobikwik"));
 
     if (el) {
       el.click();
-      log("Mobikwik clicked");
       return true;
-    } else {
-      log("Mobikwik NOT FOUND");
-      return false;
     }
+    return false;
   }
 
-  async function mainLoop(value, indicator) {
+  async function handleSuccess() {
+    fahhh.play();
+
+    clickMobikwik();
+
+    aayeinn.play();
+
+    running = false;
+    status.innerText = "Done";
+    light.style.background = "red";
+  }
+
+  async function clickTargets(targets, value) {
+    for (let t of targets.slice(0, 3)) {
+
+      highlight(t);
+
+      let buy = findBuy(t);
+      if (!buy) continue;
+
+      buy.click();
+
+      // ⚡ instant detection loop
+      for (let i = 0; i < 10; i++) {
+        if (isPaymentPage()) {
+          await handleSuccess();
+          return true;
+        }
+        await sleep(20);
+      }
+    }
+    return false;
+  }
+
+  // ===== MAIN LOOP =====
+  async function loop(value) {
     while (running) {
 
-      clickOTPUPI();
+      clickOtpUpi();
 
-      const matches = findMatches(value);
-      highlight(matches);
+      let targets = findTargets(value);
 
-      if (matches.length === 0) {
-        await sleep(100);
-        continue;
+      if (targets.length > 0) {
+        let success = await clickTargets(targets, value);
+        if (success) return;
+
+        await sleep(100); // retry fast
+      } else {
+        await sleep(100); // no match
       }
-
-      for (let el of matches.slice(0,3)) {
-
-        const btn = getBuyButton(el);
-        if (!btn) {
-          log("Buy not found");
-          continue;
-        }
-
-        btn.click();
-        log("Clicked BUY");
-
-        for (let i = 0; i < 10; i++) {
-
-          if (onPaymentPage()) {
-
-            log("Payment page detected");
-
-            fahhh.play();
-
-            clickMobikwikInstant();
-
-            aayeinn.play();
-
-            running = false;
-            indicator.style.background = "red";
-            return;
-          }
-
-          await sleep(20);
-        }
-      }
-
-      await sleep(100);
     }
   }
 
-  // ---------- UI ----------
-  function createUI() {
-    const ui = document.createElement("div");
+  // ===== CONTROLS =====
+  document.getElementById("start").onclick = () => {
+    if (!input.value.trim()) return alert("Enter amount");
 
-    ui.style = `
-      position:fixed;
-      bottom:20px;
-      right:20px;
-      width:260px;
-      background:#111;
-      color:#0f0;
-      padding:12px;
-      border-radius:12px;
-      z-index:999999999;
-      font-family:monospace;
-    `;
+    running = true;
+    status.innerText = "Running";
+    light.style.background = "lime";
 
-    ui.innerHTML = `
-      <div style="display:flex;justify-content:space-between;">
-        <div>BOT</div>
-        <div id="dot" style="width:10px;height:10px;border-radius:50%;background:red;"></div>
-      </div>
+    loop(input.value.trim());
+  };
 
-      <input id="amt" placeholder="Amount"
-        style="width:100%;margin-top:8px;padding:6px;" />
+  document.getElementById("stop").onclick = () => {
+    running = false;
+    status.innerText = "Stopped";
+    light.style.background = "red";
+  };
 
-      <button id="start" style="margin-top:8px;width:100%;">Start</button>
-      <button id="stop" style="margin-top:4px;width:100%;">Stop</button>
-
-      <div id="bot-log" style="margin-top:6px;font-size:11px;">Idle</div>
-    `;
-
-    document.body.appendChild(ui);
-
-    const input = ui.querySelector("#amt");
-    const dot = ui.querySelector("#dot");
-
-    ui.querySelector("#start").onclick = () => {
-      if (!input.value.trim()) return alert("Enter amount");
-
-      running = true;
-      dot.style.background = "lime";
-      log("Started");
-
-      mainLoop(input.value.trim(), dot);
-    };
-
-    ui.querySelector("#stop").onclick = () => {
-      running = false;
-      dot.style.background = "red";
-      log("Stopped");
-    };
-  }
-
-  createUI();
 })();
