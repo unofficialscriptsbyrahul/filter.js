@@ -22,7 +22,7 @@
     return;
   }
 
-  console.log("User ID:", userId);
+  console.log("Local ID:", userId);
 
   // =========================
   // 🔹 FIREBASE CHECK (REST)
@@ -36,19 +36,27 @@
       const res = await fetch(url);
       const data = await res.json();
 
-      if (!data.documents) return false;
+      if (!data.documents) {
+        console.log("No documents found");
+        return false;
+      }
 
       const user = data.documents.find(doc => {
         const firebaseId =
-          doc.fields.userId.stringValue ||
-          doc.fields.userId.integerValue;
+          doc.fields.userId?.stringValue ||
+          doc.fields.userId?.integerValue;
 
-        return String(firebaseId) === userId;
+        console.log("Firebase ID:", firebaseId);
+
+        return String(firebaseId) === String(userId);
       });
 
-      if (!user) return false;
+      if (!user) {
+        console.log("User not found in Firebase");
+        return false;
+      }
 
-      const active = user.fields.active.booleanValue;
+      const active = user.fields.active?.booleanValue;
 
       return active === true;
 
@@ -68,13 +76,11 @@
   console.log("✅ ACCESS GRANTED");
 
   // =========================
-  // 🔥 YOUR BOT LOGIC STARTS
+  // 🔥 UI PANEL
   // =========================
-
   let running = false;
   let observer = null;
 
-  // ===== UI PANEL =====
   const box = document.createElement("div");
   box.style = `
     position:fixed; bottom:20px; right:20px;
@@ -98,7 +104,9 @@
   const input = box.querySelector("#amt");
   const status = box.querySelector("#status");
 
-  // ===== CORE LOGIC =====
+  // =========================
+  // 🔥 CORE BOT LOGIC
+  // =========================
   function run() {
     const value = input.value.trim();
     if (!value) return;
@@ -121,7 +129,6 @@
     });
   }
 
-  // ===== OBSERVER =====
   function startObserver() {
     if (observer) return;
 
@@ -137,7 +144,6 @@
     observer = null;
   }
 
-  // ===== BUTTONS =====
   box.querySelector("#start").onclick = () => {
     if (running) return;
     running = true;
