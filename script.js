@@ -4,40 +4,51 @@
 
   let running = false;
 
-  // ✅ FIXED: direct audio links
+  // ✅ Sounds (direct links)
   const successSound = new Audio("https://www.myinstants.com/media/sounds/yoooooooooooo-60048.mp3");
   const finalSound = new Audio("https://www.myinstants.com/media/sounds/maa-tari-oo-bhai-7312.mp3");
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+  // 🔊 Safe play (avoids silent failure)
+  async function safePlay(audio) {
+    try {
+      audio.currentTime = 0;
+      await audio.play();
+    } catch (e) {
+      console.log("Sound blocked:", e);
+    }
+  }
+
   function clickOTPUPI() {
     document.querySelectorAll("button, div, span").forEach(el => {
-      if (el.innerText.toLowerCase().includes("otp-upi")) {
+      if ((el.innerText || "").toLowerCase().includes("otp-upi")) {
         el.click();
       }
     });
   }
 
-  // 🚨 STRONGER Mobikwik click
+  // 🔥 Strong Mobikwik click
   function clickMobikwik() {
     let found = false;
 
-    document.querySelectorAll("button, div, span").forEach(el => {
-      if (el.innerText.toLowerCase().includes("mobikwik")) {
+    const elements = document.querySelectorAll("button, div, span, li");
+
+    elements.forEach(el => {
+      const text = (el.innerText || "").toLowerCase();
+      const html = (el.outerHTML || "").toLowerCase();
+
+      if (
+        text.includes("mobikwik") ||
+        html.includes("mobikwik") ||
+        (el.className || "").toLowerCase().includes("mobikwik")
+      ) {
         el.click();
         found = true;
       }
     });
 
-    // fallback: click parent container if text inside
-    if (!found) {
-      document.querySelectorAll("*").forEach(el => {
-        if (!found && el.innerText && el.innerText.toLowerCase().includes("mobikwik")) {
-          el.click();
-          found = true;
-        }
-      });
-    }
+    return found;
   }
 
   function onPaymentPage() {
@@ -77,8 +88,9 @@
   async function mainLoop(value, indicator) {
     while (running) {
 
+      // reset to OTP-UPI
       clickOTPUPI();
-      await sleep(200);
+      await sleep(100);
 
       let matches = findMatches(value);
       highlight(matches);
@@ -91,18 +103,19 @@
           if (!btn) continue;
 
           btn.click();
-          await sleep(300); // ⬅️ increased slightly for reliability
+          await sleep(200);
 
           if (onPaymentPage()) {
-            successSound.play();
 
-            await sleep(400);
+            await safePlay(successSound);
+
+            await sleep(200);
 
             clickMobikwik();
 
-            await sleep(500); // ⬅️ give time to register click
+            await sleep(200);
 
-            finalSound.play();
+            await safePlay(finalSound);
 
             stop(indicator);
             return;
@@ -158,6 +171,17 @@
 
       running = true;
       dot.style.background = "green";
+
+      // 🔓 unlock audio on user interaction
+      successSound.play().then(() => {
+        successSound.pause();
+        successSound.currentTime = 0;
+      }).catch(()=>{});
+
+      finalSound.play().then(() => {
+        finalSound.pause();
+        finalSound.currentTime = 0;
+      }).catch(()=>{});
 
       mainLoop(input.value.trim(), dot);
     }
