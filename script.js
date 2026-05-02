@@ -80,7 +80,7 @@
       clickLarge();
 
       // ⚠️ REQUIRED (DOM needs time to update list)
-      await sleep(60);
+      await sleep(100);
 
       let matches = findMatches(value);
       highlight(matches);
@@ -93,18 +93,18 @@
           if (!buyBtn) continue;
 
           // ⚡ minimal human delay
-          await sleep(40);
+          await sleep(100);
           buyBtn.click();
 
           // ⚠️ REQUIRED (page transition)
-          await sleep(80);
+          await sleep(100);
 
           if (onPaymentPage()) {
 
             fahhh.play();
 
             // ⚠️ REQUIRED (payment methods render)
-            await sleep(120);
+            await sleep(200);
 
             clickMobikwikFast();
 
@@ -117,7 +117,7 @@
       }
 
       // ⚡ tight loop pacing
-      await sleep(60);
+      await sleep(300);
     }
   }
 
