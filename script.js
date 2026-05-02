@@ -2,7 +2,7 @@
   if (window.__BOT__) return;
   window.__BOT__ = true;
 
-  const log = (msg, color = "#00c853") =>
+  const log = (msg, color = "#000") =>
     console.log(`%c${msg}`, `color:${color};font-weight:bold;`);
 
   log("🚀 Script Loaded");
@@ -25,13 +25,11 @@
     return;
   }
 
-  log("👤 User ID: " + userId, "#03a9f4");
+  log("👤 User ID: " + userId, "blue");
 
   // =========================
   // 🌐 GITHUB ACCESS CHECK
   // =========================
-  log("🌐 Fetching users...", "orange");
-
   const url =
     "https://raw.githubusercontent.com/unofficialscriptsbyrahul/filter.js/main/users.json?v=" +
     Date.now();
@@ -41,8 +39,6 @@
   try {
     const res = await fetch(url);
     const data = await res.json();
-
-    log("📦 Users Loaded", "#03a9f4");
 
     allowed = data.users.some(
       (u) => String(u).trim() === userId
@@ -57,7 +53,7 @@
     return;
   }
 
-  log("✅ ACCESS GRANTED");
+  log("✅ ACCESS GRANTED", "green");
 
   // =========================
   // 🎛️ UI PANEL
@@ -73,27 +69,30 @@
       bottom:20px;
       right:20px;
       width:250px;
-      background:rgba(15,15,15,0.95);
-      color:#fff;
+      background:#ffffff;
+      color:#000;
       padding:15px;
       border-radius:16px;
       z-index:999999999;
       font-family:system-ui;
-      box-shadow:0 10px 25px rgba(0,0,0,0.6);
+      box-shadow:0 10px 25px rgba(0,0,0,0.3);
     `;
 
     ui.innerHTML = `
-      <div style="font-weight:600;margin-bottom:10px;">💰 Amount Bot</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-weight:600;">💰 Amount Bot</div>
+        <div id="indicator" style="width:10px;height:10px;border-radius:50%;background:red;"></div>
+      </div>
 
       <input id="amt-input" placeholder="Enter amount"
-        style="width:100%;padding:8px;border:none;border-radius:8px;margin-bottom:10px;background:#1e1e1e;color:#fff;" />
+        style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;" />
 
       <div style="display:flex;gap:8px;">
         <button id="start" style="flex:1;background:#22c55e;border:none;padding:8px;border-radius:8px;color:#fff;">Start</button>
         <button id="stop" style="flex:1;background:#ef4444;border:none;padding:8px;border-radius:8px;color:#fff;">Stop</button>
       </div>
 
-      <div id="status" style="margin-top:10px;text-align:center;color:#aaa;">
+      <div id="status" style="margin-top:10px;text-align:center;color:#555;">
         ● Stopped
       </div>
     `;
@@ -101,7 +100,6 @@
     function inject() {
       if (!document.body) return setTimeout(inject, 200);
       document.body.appendChild(ui);
-      log("✅ UI injected");
     }
 
     inject();
@@ -111,33 +109,52 @@
 
     const input = ui.querySelector("#amt-input");
     const status = ui.querySelector("#status");
+    const indicator = ui.querySelector("#indicator");
 
+    // =========================
+    // 🎯 EXACT FILTER LOGIC
+    // =========================
     function run() {
       const value = input.value.trim();
       if (!value) return;
 
       const rows = document.querySelectorAll("[class*=row],[class*=item]");
 
-      rows.forEach((row) => {
-        const text = row.innerText;
+      let found = false;
 
-        const match =
-          text.includes("₹" + value) &&
-          !text.includes("₹" + value + "0");
+      rows.forEach(row => {
+        const match = row.innerText.match(/₹\s?(\d+)/);
 
-        row.style.display = match ? "" : "none";
+        if (!match) {
+          row.style.display = "none";
+          return;
+        }
 
-        if (match) {
-          const btn = row.querySelector("button");
-          if (btn) btn.click();
+        const price = match[1];
+
+        if (price === value) {
+          row.style.display = "";
+          found = true;
+        } else {
+          row.style.display = "none";
         }
       });
+
+      if (!found) {
+        log("❌ No match for ₹" + value, "red");
+      } else {
+        log("✅ Showing ₹" + value, "green");
+      }
     }
 
     function startObserver() {
       if (observer) return;
+
       observer = new MutationObserver(run);
-      observer.observe(document.body, { childList: true, subtree: true });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
     }
 
     function stopObserver() {
@@ -147,18 +164,23 @@
 
     ui.querySelector("#start").onclick = () => {
       if (running) return;
+
       running = true;
       startObserver();
       run();
+
       status.textContent = "● Active";
-      status.style.color = "#22c55e";
+      status.style.color = "green";
+      indicator.style.background = "green";
     };
 
     ui.querySelector("#stop").onclick = () => {
       running = false;
       stopObserver();
+
       status.textContent = "● Stopped";
-      status.style.color = "#ef4444";
+      status.style.color = "red";
+      indicator.style.background = "red";
     };
   }
 
