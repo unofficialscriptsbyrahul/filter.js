@@ -70,26 +70,18 @@
     return null;
   }
 
+  // ✅ FINAL FIXED MOBIKWIK CLICK
   function clickMobikwik() {
-    let el = document.querySelector(".bgmobikwik");
+    const all = document.querySelectorAll(".bgmobikwik");
 
-    if (!el) {
-      el = [...document.querySelectorAll("*")]
-        .find(e => (e.innerText || "").toLowerCase().includes("mobikwik"));
-    }
-
-    if (el) {
-      let clickable = el.closest("button, div, span");
-      if (clickable) {
-        clickable.click();
-        return true;
-      }
+    if (all.length > 0) {
+      all[0].click(); // click first Mobikwik option
+      return true;
     }
 
     return false;
   }
 
-  // ✅ FIXED HANDLE SUCCESS (ONLY CHANGE)
   async function handleSuccess() {
     fahhh.play();
 
