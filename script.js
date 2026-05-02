@@ -83,12 +83,13 @@
   async function mainLoop(value, indicator) {
     while (running) {
 
-      // 🔁 STEP 1: reset flow
+      // ⚡ INSTANT double action (no delay)
       clickOTPUPI();
       clickLarge();
+
+      // small delay only AFTER both clicks
       await sleep(100 + Math.random()*80);
 
-      // 🔍 STEP 3: scan
       let matches = findMatches(value);
       highlight(matches);
 
@@ -106,7 +107,6 @@
 
           if (onPaymentPage()) {
 
-            // 🎯 SUCCESS
             fahhh.play();
 
             await sleep(200);
