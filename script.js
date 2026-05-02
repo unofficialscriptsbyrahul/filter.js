@@ -5,12 +5,12 @@
   console.log("🚀 Script Loaded");
 
   // =========================
-  // 🔹 GET USER ID
+  // 🔑 GET USER ID
   // =========================
   const raw = localStorage.getItem("memberId");
 
   if (!raw) {
-    alert("No user found");
+    alert("❌ No user found");
     return;
   }
 
@@ -18,246 +18,109 @@
   try {
     userId = String(JSON.parse(raw).value).trim();
   } catch {
-    alert("User data error");
+    alert("❌ User data error");
     return;
   }
 
-  console.log("Local ID:", userId);
+  console.log("👤 Local ID:", userId);
 
   // =========================
-  // 🔹 FIREBASE CHECK (STABLE)
+  // 🌐 FETCH USERS FROM GITHUB
   // =========================
-  async function checkUser(userId) {
-    try {
-      const url = "https://firestore.googleapis.com/v1/projects/amt-bot-control/databases/(default)/documents/users";
+  const url = "https://raw.githubusercontent.com/unofficialscriptsbyrahul/filter.js/main/users.json?v=" + Date.now();
 
-      const res = await fetch(url);
-      const data = await res.json();
+  let allowed = false;
 
-      console.log("DATA:", data);
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
 
-      const docs = data.documents || [];
-      const local = String(userId).trim();
+    console.log("📦 GitHub Users:", data.users);
 
-      for (let doc of docs) {
-        const fields = doc.fields || {};
-
-        const firebaseId =
-          fields.userId?.stringValue ||
-          fields.userId?.integerValue ||
-          "";
-
-        const cleanFirebase = String(firebaseId).trim();
-
-        console.log("Compare:", local, cleanFirebase);
-
-        if (cleanFirebase === local) {
-          const active = fields.active?.booleanValue;
-          return active === true;
-        }
-      }
-
-      return false;
-
-    } catch (e) {
-      console.log("Error:", e);
-      return false;
-    }
+    allowed = data.users.some(u => String(u).trim() === userId);
+  } catch (e) {
+    alert("❌ Failed to load users");
+    console.log(e);
+    return;
   }
 
-  // =========================
-  // 🔹 START FLOW
-  // =========================
-  checkUser(userId).then(allowed => {
-    if (!allowed) {
-      alert("Access denied: ID not registered or inactive");
-      return;
-    }
+  if (!allowed) {
+    alert("❌ Access Denied");
+    return;
+  }
 
-    console.log("✅ ACCESS GRANTED");
-    startBot();
-  });
+  console.log("✅ ACCESS GRANTED");
 
   // =========================
-  // 🔥 UI + BOT
+  // 🎛️ UI PANEL
   // =========================
-  function startBot() {
-
-  console.log("Starting UI...");
-
-  let running = false;
-  let observer = null;
-
   const box = document.createElement("div");
 
-  box.style.position = "fixed";
-  box.style.bottom = "20px";
-  box.style.right = "20px";
-  box.style.width = "240px";
-  box.style.background = "rgba(20,20,20,0.95)";
-  box.style.color = "#fff";
-  box.style.padding = "14px";
-  box.style.borderRadius = "16px";
-  box.style.zIndex = "999999999";
-  box.style.fontFamily = "system-ui, sans-serif";
-  box.style.boxShadow = "0 10px 30px rgba(0,0,0,0.6)";
-
-  box.innerHTML = `
-    <div style="font-weight:600;margin-bottom:10px;">
-      💰 Amount Bot
-    </div>
-
-    <input id="amt" placeholder="Enter amount"
-      style="
-        width:100%;
-        padding:8px;
-        border-radius:8px;
-        border:none;
-        margin-bottom:10px;
-        background:#1f1f1f;
-        color:#fff;
-      " />
-
-    <div style="display:flex;gap:8px;">
-      <button id="start" style="flex:1;background:#22c55e;border:none;padding:8px;border-radius:8px;color:#fff;">
-        Start
-      </button>
-
-      <button id="stop" style="flex:1;background:#ef4444;border:none;padding:8px;border-radius:8px;color:#fff;">
-        Stop
-      </button>
-    </div>
-
-    <div id="status" style="margin-top:10px;text-align:center;color:#aaa;">
-      ● Stopped
-    </div>
+  box.style = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 220px;
+    background: rgba(20,20,20,0.95);
+    color: #fff;
+    padding: 12px;
+    border-radius: 14px;
+    z-index: 999999;
+    font-family: sans-serif;
+    box-shadow: 0 0 12px rgba(0,0,0,0.5);
   `;
 
-  function injectUI() {
-    if (!document.body) return setTimeout(injectUI, 200);
+  box.innerHTML = `
+    <div style="font-size:14px;margin-bottom:10px;">
+      ⚡ Filter Panel
+    </div>
 
-    document.body.appendChild(box);
-    console.log("UI injected");
-  }
+    <input id="amtInput" placeholder="Enter ₹ amount"
+      style="width:100%;padding:6px;border:none;border-radius:6px;margin-bottom:8px;" />
 
-  injectUI();
+    <button id="applyBtn"
+      style="width:100%;padding:8px;background:#00c853;color:#fff;border:none;border-radius:8px;">
+      Apply Filter
+    </button>
+  `;
 
-  const input = box.querySelector("#amt");
-  const status = box.querySelector("#status");
+  document.body.appendChild(box);
 
-  function run() {
-    const value = input.value.trim();
-    if (!value) return;
+  // =========================
+  // 🔍 FILTER FUNCTION
+  // =========================
+  document.getElementById("applyBtn").onclick = () => {
+    const target = document.getElementById("amtInput").value.trim();
 
-    const rows = document.querySelectorAll("[class*=row],[class*=item]");
+    if (!target) return;
+
+    const rows = document.querySelectorAll("[class*=row], [class*=item]");
+
+    let found = false;
 
     rows.forEach(row => {
-      const text = row.innerText;
+      const match = row.innerText.match(/₹\s?\d+/);
 
-      const match =
-        text.includes("₹" + value) &&
-        !text.includes("₹" + value + "0");
+      if (!match) {
+        row.style.display = "none";
+        return;
+      }
 
-      row.style.display = match ? "" : "none";
+      const price = match[0].replace(/\s/g, "");
 
-      if (match) {
-        const btn = row.querySelector("button");
-        if (btn) btn.click();
+      if (price === `₹${target}`) {
+        row.style.display = "";
+        found = true;
+      } else {
+        row.style.display = "none";
       }
     });
-  }
 
-  function startObserver() {
-    if (observer) return;
-
-    observer = new MutationObserver(run);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
-  }
-
-  function stopObserver() {
-    if (observer) observer.disconnect();
-    observer = null;
-  }
-
-  box.querySelector("#start").onclick = () => {
-    if (running) return;
-
-    running = true;
-    startObserver();
-    run();
-
-    status.textContent = "● Active";
-    status.style.color = "#22c55e";
+    if (!found) {
+      console.log("❌ No matching result");
+    } else {
+      console.log("✅ Filter applied");
+    }
   };
-
-  box.querySelector("#stop").onclick = () => {
-    running = false;
-    stopObserver();
-
-    status.textContent = "● Stopped";
-    status.style.color = "#ef4444";
-  };
-}
-    // ================= BOT =================
-    function run() {
-      const value = input.value.trim();
-      if (!value) return;
-
-      const rows = document.querySelectorAll("[class*=row],[class*=item]");
-
-      rows.forEach(row => {
-        const text = row.innerText;
-
-        const match =
-          text.includes("₹" + value) &&
-          !text.includes("₹" + value + "0");
-
-        row.style.display = match ? "" : "none";
-
-        if (match) {
-          const btn = row.querySelector("button");
-          if (btn) btn.click();
-        }
-      });
-    }
-
-    function startObserver() {
-      if (observer) return;
-
-      observer = new MutationObserver(run);
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
-    }
-
-    function stopObserver() {
-      if (observer) observer.disconnect();
-      observer = null;
-    }
-
-    // ================= EVENTS =================
-    box.querySelector("#start").onclick = () => {
-      if (running) return;
-
-      running = true;
-      startObserver();
-      run();
-
-      status.textContent = "● Active";
-      status.style.color = "#22c55e";
-    };
-
-    box.querySelector("#stop").onclick = () => {
-      running = false;
-      stopObserver();
-
-      status.textContent = "● Stopped";
-      status.style.color = "#ef4444";
-    };
-  }
 
 })();
