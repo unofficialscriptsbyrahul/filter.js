@@ -9,38 +9,53 @@
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+  // ---------- HELPERS ----------
+
+  function text(el) {
+    return (el.innerText || "").toLowerCase().replace(/\s+/g, " ").trim();
+  }
+
   function onPaymentPage() {
-    return document.body.innerText.toLowerCase().includes("select method payment");
+    return text(document.body).includes("select method payment");
+  }
+
+  function clickByText(keyword) {
+    keyword = keyword.toLowerCase();
+
+    const el = [...document.querySelectorAll("button, div, span")]
+      .find(e => text(e).includes(keyword));
+
+    if (el) {
+      el.click();
+      return true;
+    }
+    return false;
   }
 
   function clickOTPUPI() {
-    document.querySelectorAll("button, div, span").forEach(el => {
-      if (el.innerText?.toLowerCase().includes("otp-upi")) el.click();
-    });
+    return clickByText("otp-upi");
   }
 
   function clickLarge() {
-    document.querySelectorAll("button, div, span").forEach(el => {
-      if (el.innerText?.toLowerCase().trim() === "large") el.click();
-    });
-  }
-
-  function findBuyButton(startEl) {
-    let current = startEl;
-    while (current && current !== document.body) {
-      let btn = current.querySelector("button, .van-button__text");
-      if (btn && btn.innerText?.toLowerCase().includes("buy")) return btn;
-      current = current.parentElement;
-    }
-    return null;
+    return clickByText("large");
   }
 
   function findMatches(value) {
+    const regex = new RegExp(`₹\\s*${value}(?!\\d)`);
     return [...document.querySelectorAll("[class*=row],[class*=item]")]
-      .filter(row => {
-        const text = row.innerText.replace(/\s/g,"").replace(/,/g,"");
-        return new RegExp(`₹${value}(?!\\d)`).test(text);
-      });
+      .filter(row => regex.test(row.innerText));
+  }
+
+  function findBuyButton(row) {
+    let cur = row;
+
+    while (cur && cur !== document.body) {
+      const btn = [...cur.querySelectorAll("button, span, div")]
+        .find(e => text(e).includes("buy"));
+      if (btn) return btn;
+      cur = cur.parentElement;
+    }
+    return null;
   }
 
   function highlight(matches) {
@@ -50,76 +65,70 @@
     });
 
     matches.slice(0,3).forEach(r=>{
-      r.style.outline="2px solid green";
-      r.style.background="rgba(0,255,0,0.1)";
+      r.style.outline="2px solid #22c55e";
+      r.style.background="rgba(34,197,94,0.15)";
     });
   }
 
-  function clickMobikwikFast() {
-    let tries = 0;
-
-    const interval = setInterval(() => {
-      const el = [...document.querySelectorAll("button, div, span")]
-        .find(e => e.innerText?.toLowerCase().includes("mobikwik"));
-
-      if (el) {
-        el.click();
+  async function clickMobikwik() {
+    for (let i = 0; i < 8; i++) {
+      if (clickByText("mobikwik")) {
         aayeinn.play();
-        clearInterval(interval);
+        return true;
       }
-
-      if (++tries > 10) clearInterval(interval);
-    }, 80); // faster retry
+      await sleep(100);
+    }
+    return false;
   }
+
+  // ---------- MAIN LOOP ----------
 
   async function mainLoop(value, indicator) {
     while (running) {
 
-      // ⚡ instant entry setup
+      // STEP 1: set correct state
       clickOTPUPI();
       clickLarge();
 
-      // ⚠️ REQUIRED (DOM needs time to update list)
-      await sleep(100);
+      await sleep(120); // allow UI refresh
 
-      let matches = findMatches(value);
+      // STEP 2: scan
+      const matches = findMatches(value);
       highlight(matches);
 
-      if (matches.length > 0) {
-
-        for (let row of matches.slice(0,3)) {
-
-          let buyBtn = findBuyButton(row);
-          if (!buyBtn) continue;
-
-          // ⚡ minimal human delay
-          await sleep(100);
-          buyBtn.click();
-
-          // ⚠️ REQUIRED (page transition)
-          await sleep(100);
-
-          if (onPaymentPage()) {
-
-            fahhh.play();
-
-            // ⚠️ REQUIRED (payment methods render)
-            await sleep(200);
-
-            clickMobikwikFast();
-
-            running = false;
-            indicator.style.background = "red";
-            return;
-          }
-        }
-
+      if (matches.length === 0) {
+        await sleep(120);
+        continue;
       }
 
-      // ⚡ tight loop pacing
-      await sleep(300);
+      // STEP 3: act
+      for (let row of matches.slice(0,3)) {
+
+        const btn = findBuyButton(row);
+        if (!btn) continue;
+
+        btn.click();
+        await sleep(120);
+
+        if (onPaymentPage()) {
+          fahhh.play();
+
+          await sleep(150);
+
+          await clickMobikwik();
+
+          running = false;
+          indicator.style.background = "red";
+          return;
+        }
+      }
+
+      // retry loop
+      await sleep(120);
     }
   }
+
+  // ---------- UI ----------
 
   function createUI() {
     const ui = document.createElement("div");
