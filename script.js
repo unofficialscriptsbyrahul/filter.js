@@ -25,52 +25,58 @@
   console.log("Local ID:", userId);
 
   // =========================
-  // 🔹 FIREBASE CHECK (FULL FIXED)
+  // 🔹 FIREBASE CHECK (STABLE)
   // =========================
   async function checkUser(userId) {
-  try {
-    const projectId = "amt-bot-control";
+    try {
+      const projectId = "amt-bot-control";
 
-    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users`;
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users`;
 
-    const res = await fetch(url);
-    const data = await res.json();
+      const res = await fetch(url);
+      const data = await res.json();
 
-    console.log("RAW DATA:", data);
+      console.log("RAW DATA:", data);
 
-    // 🔥 FORCE SAFE ARRAY
-    const docs = data.documents || [];
+      const docs = data.documents || [];
+      const cleanLocal = String(userId).trim();
 
-    const cleanLocal = String(userId).trim();
+      for (let i = 0; i < docs.length; i++) {
+        const fields = docs[i].fields || {};
 
-    for (let i = 0; i < docs.length; i++) {
-      const doc = docs[i];
-      const fields = doc.fields || {};
+        const firebaseId =
+          fields.userId?.stringValue ||
+          fields.userId?.integerValue ||
+          "";
 
-      const firebaseId =
-        fields.userId?.stringValue ||
-        fields.userId?.integerValue;
+        const cleanFirebase = String(firebaseId).trim();
 
-      const cleanFirebase = String(firebaseId || "").trim();
+        console.log("Comparing:", cleanLocal, cleanFirebase);
 
-      console.log("Comparing:", cleanLocal, cleanFirebase);
+        if (cleanFirebase === cleanLocal) {
+          console.log("MATCH FOUND");
 
-      if (cleanFirebase === cleanLocal) {
-        console.log("MATCH FOUND");
-
-        const active = fields.active?.booleanValue;
-        return active === true;
+          const active = fields.active?.booleanValue;
+          return active === true;
+        }
       }
+
+      console.log("NO MATCH FOUND");
+      return false;
+
+    } catch (err) {
+      console.log("Firebase error:", err);
+      return false;
     }
-
-    console.log("NO MATCH FOUND");
-    return false;
-
-  } catch (err) {
-    console.log("Firebase error:", err);
-    return false;
   }
-}
+
+  const allowed = await checkUser(userId);
+
+  if (!allowed) {
+    alert("Access denied");
+    return;
+  }
+
   console.log("✅ ACCESS GRANTED");
 
   // =========================
@@ -103,7 +109,7 @@
   const status = box.querySelector("#status");
 
   // =========================
-  // 🔥 CORE BOT LOGIC
+  // 🔥 BOT LOGIC
   // =========================
   function run() {
     const value = input.value.trim();
