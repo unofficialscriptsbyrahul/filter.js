@@ -15,17 +15,13 @@
 
   function clickOTPUPI() {
     document.querySelectorAll("button, div, span").forEach(el => {
-      if (el.innerText?.toLowerCase().includes("otp-upi")) {
-        el.click();
-      }
+      if (el.innerText?.toLowerCase().includes("otp-upi")) el.click();
     });
   }
 
   function clickLarge() {
     document.querySelectorAll("button, div, span").forEach(el => {
-      if (el.innerText?.toLowerCase().trim() === "large") {
-        el.click();
-      }
+      if (el.innerText?.toLowerCase().trim() === "large") el.click();
     });
   }
 
@@ -33,9 +29,7 @@
     let current = startEl;
     while (current && current !== document.body) {
       let btn = current.querySelector("button, .van-button__text");
-      if (btn && btn.innerText?.toLowerCase().includes("buy")) {
-        return btn;
-      }
+      if (btn && btn.innerText?.toLowerCase().includes("buy")) return btn;
       current = current.parentElement;
     }
     return null;
@@ -74,21 +68,19 @@
         clearInterval(interval);
       }
 
-      if (++tries > 10) {
-        clearInterval(interval);
-      }
-    }, 100);
+      if (++tries > 10) clearInterval(interval);
+    }, 80); // faster retry
   }
 
   async function mainLoop(value, indicator) {
     while (running) {
 
-      // ⚡ INSTANT double action (no delay)
+      // ⚡ instant entry setup
       clickOTPUPI();
       clickLarge();
 
-      // small delay only AFTER both clicks
-      await sleep(100 + Math.random()*10);
+      // ⚠️ REQUIRED (DOM needs time to update list)
+      await sleep(60);
 
       let matches = findMatches(value);
       highlight(matches);
@@ -100,16 +92,19 @@
           let buyBtn = findBuyButton(row);
           if (!buyBtn) continue;
 
-          await sleep(60 + Math.random()*10);
+          // ⚡ minimal human delay
+          await sleep(40);
           buyBtn.click();
 
-          await sleep(120 + Math.random()*10);
+          // ⚠️ REQUIRED (page transition)
+          await sleep(80);
 
           if (onPaymentPage()) {
 
             fahhh.play();
 
-            await sleep(200);
+            // ⚠️ REQUIRED (payment methods render)
+            await sleep(120);
 
             clickMobikwikFast();
 
@@ -119,11 +114,10 @@
           }
         }
 
-        await sleep(100);
-
-      } else {
-        await sleep(100);
       }
+
+      // ⚡ tight loop pacing
+      await sleep(60);
     }
   }
 
