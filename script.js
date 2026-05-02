@@ -27,250 +27,199 @@
   // =========================
   // 🔹 FIREBASE CHECK (STABLE)
   // =========================
- async function checkUser(userId) {
-  try {
-    const url = "https://firestore.googleapis.com/v1/projects/amt-bot-control/databases/(default)/documents/users";
+  async function checkUser(userId) {
+    try {
+      const url = "https://firestore.googleapis.com/v1/projects/amt-bot-control/databases/(default)/documents/users";
 
-    const res = await fetch(url);
-    const data = await res.json();
+      const res = await fetch(url);
+      const data = await res.json();
 
-    console.log("DATA:", data);
+      console.log("DATA:", data);
 
-    const docs = data.documents || [];
-    const local = String(userId).trim();
+      const docs = data.documents || [];
+      const local = String(userId).trim();
 
-    for (let doc of docs) {
-      const fields = doc.fields;
+      for (let doc of docs) {
+        const fields = doc.fields || {};
 
-      const firebaseId =
-        fields.userId.stringValue ||
-        fields.userId.integerValue;
+        const firebaseId =
+          fields.userId?.stringValue ||
+          fields.userId?.integerValue ||
+          "";
 
-      console.log("Compare:", local, firebaseId);
+        const cleanFirebase = String(firebaseId).trim();
 
-      if (String(firebaseId) === local) {
-        return fields.active.booleanValue === true;
+        console.log("Compare:", local, cleanFirebase);
+
+        if (cleanFirebase === local) {
+          const active = fields.active?.booleanValue;
+          return active === true;
+        }
       }
+
+      return false;
+
+    } catch (e) {
+      console.log("Error:", e);
+      return false;
+    }
+  }
+
+  // =========================
+  // 🔹 START FLOW
+  // =========================
+  checkUser(userId).then(allowed => {
+    if (!allowed) {
+      alert("Access denied: ID not registered or inactive");
+      return;
     }
 
-    return false;
-
-  } catch (e) {
-    console.log("Error:", e);
-    return false;
-  }
-}
-  const allowed = await checkUser(userId);
-
-  if (!allowed) {
-    alert("Access denied");
-    return;
-  }
-
-  console.log("✅ ACCESS GRANTED");
+    console.log("✅ ACCESS GRANTED");
+    startBot();
+  });
 
   // =========================
-  // 🔥 UI PANEL
+  // 🔥 UI + BOT
   // =========================
- function startBot() {
+  function startBot() {
 
-  let running = false;
-  let observer = null;
+    let running = false;
+    let observer = null;
 
-  // ================= UI =================
-  const box = document.createElement("div");
-  box.style = `
-    position:fixed;
-    bottom:20px;
-    right:20px;
-    width:240px;
-    backdrop-filter: blur(14px);
-    background: rgba(20,20,20,0.85);
-    color:#fff;
-    padding:14px;
-    border-radius:16px;
-    z-index:99999;
-    font-family: system-ui, sans-serif;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-  `;
+    const box = document.createElement("div");
+    box.style = `
+      position:fixed;
+      bottom:20px;
+      right:20px;
+      width:240px;
+      backdrop-filter: blur(14px);
+      background: rgba(20,20,20,0.85);
+      color:#fff;
+      padding:14px;
+      border-radius:16px;
+      z-index:99999;
+      font-family: system-ui, sans-serif;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    `;
 
-  box.innerHTML = `
-    <div style="font-size:15px;font-weight:600;margin-bottom:10px;">
-      💰 Amount Bot
-    </div>
+    box.innerHTML = `
+      <div style="font-size:15px;font-weight:600;margin-bottom:10px;">
+        💰 Amount Bot
+      </div>
 
-    <input id="amt" placeholder="Enter amount"
-      style="
-        width:100%;
-        padding:8px;
-        border-radius:8px;
-        border:none;
-        outline:none;
-        margin-bottom:10px;
-        background:#1f1f1f;
-        color:#fff;
-      " />
-
-    <div style="display:flex;gap:8px;">
-      <button id="start"
+      <input id="amt" placeholder="Enter amount"
         style="
-          flex:1;
+          width:100%;
           padding:8px;
-          border:none;
           border-radius:8px;
-          background:#22c55e;
+          border:none;
+          outline:none;
+          margin-bottom:10px;
+          background:#1f1f1f;
           color:#fff;
-          font-weight:600;
-        ">
-        Start
-      </button>
+        " />
 
-      <button id="stop"
+      <div style="display:flex;gap:8px;">
+        <button id="start"
+          style="
+            flex:1;
+            padding:8px;
+            border:none;
+            border-radius:8px;
+            background:#22c55e;
+            color:#fff;
+            font-weight:600;
+          ">
+          Start
+        </button>
+
+        <button id="stop"
+          style="
+            flex:1;
+            padding:8px;
+            border:none;
+            border-radius:8px;
+            background:#ef4444;
+            color:#fff;
+            font-weight:600;
+          ">
+          Stop
+        </button>
+      </div>
+
+      <div id="status"
         style="
-          flex:1;
-          padding:8px;
-          border:none;
-          border-radius:8px;
-          background:#ef4444;
-          color:#fff;
-          font-weight:600;
+          margin-top:10px;
+          font-size:13px;
+          color:#aaa;
+          text-align:center;
         ">
-        Stop
-      </button>
-    </div>
+        ● Stopped
+      </div>
+    `;
 
-    <div id="status"
-      style="
-        margin-top:10px;
-        font-size:13px;
-        color:#aaa;
-        text-align:center;
-      ">
-      ● Stopped
-    </div>
-  `;
+    document.body.appendChild(box);
 
-  document.body.appendChild(box);
+    const input = box.querySelector("#amt");
+    const status = box.querySelector("#status");
 
-  const input = box.querySelector("#amt");
-  const status = box.querySelector("#status");
+    // ================= BOT =================
+    function run() {
+      const value = input.value.trim();
+      if (!value) return;
 
-  // ================= BOT =================
-  function run() {
-    const value = input.value.trim();
-    if (!value) return;
+      const rows = document.querySelectorAll("[class*=row],[class*=item]");
 
-    const rows = document.querySelectorAll("[class*=row],[class*=item]");
+      rows.forEach(row => {
+        const text = row.innerText;
 
-    rows.forEach(row => {
-      const text = row.innerText;
+        const match =
+          text.includes("₹" + value) &&
+          !text.includes("₹" + value + "0");
 
-      const match =
-        text.includes("₹" + value) &&
-        !text.includes("₹" + value + "0");
+        row.style.display = match ? "" : "none";
 
-      row.style.display = match ? "" : "none";
+        if (match) {
+          const btn = row.querySelector("button");
+          if (btn) btn.click();
+        }
+      });
+    }
 
-      if (match) {
-        const btn = row.querySelector("button");
-        if (btn) btn.click();
-      }
-    });
+    function startObserver() {
+      if (observer) return;
+
+      observer = new MutationObserver(run);
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+    }
+
+    function stopObserver() {
+      if (observer) observer.disconnect();
+      observer = null;
+    }
+
+    // ================= EVENTS =================
+    box.querySelector("#start").onclick = () => {
+      if (running) return;
+
+      running = true;
+      startObserver();
+      run();
+
+      status.textContent = "● Active";
+      status.style.color = "#22c55e";
+    };
+
+    box.querySelector("#stop").onclick = () => {
+      running = false;
+      stopObserver();
+
+      status.textContent = "● Stopped";
+      status.style.color = "#ef4444";
+    };
   }
-
-  function startObserver() {
-    if (observer) return;
-
-    observer = new MutationObserver(run);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
-  }
-
-  function stopObserver() {
-    if (observer) observer.disconnect();
-    observer = null;
-  }
-
-  // ================= EVENTS =================
-  box.querySelector("#start").onclick = () => {
-    if (running) return;
-
-    running = true;
-    startObserver();
-    run();
-
-    status.textContent = "● Active";
-    status.style.color = "#22c55e";
-  };
-
-  box.querySelector("#stop").onclick = () => {
-    running = false;
-    stopObserver();
-
-    status.textContent = "● Stopped";
-    status.style.color = "#ef4444";
-  };
-
-}
-  // =========================
-  // 🔥 BOT LOGIC
-  // =========================
-  function run() {
-    const value = input.value.trim();
-    if (!value) return;
-
-    const rows = document.querySelectorAll("[class*=row],[class*=item]");
-
-    rows.forEach(row => {
-      const text = row.innerText;
-
-      const match =
-        text.includes("₹" + value) &&
-        !text.includes("₹" + value + "0");
-
-      row.style.display = match ? "" : "none";
-
-      if (match) {
-        const btn = row.querySelector("button");
-        if (btn) btn.click();
-      }
-    });
-  }
-
-  function startObserver() {
-    if (observer) return;
-
-    observer = new MutationObserver(run);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
-  }
-
-  function stopObserver() {
-    if (observer) observer.disconnect();
-    observer = null;
-  }
-
-  box.querySelector("#start").onclick = () => {
-    if (running) return;
-    running = true;
-
-    startObserver();
-    run();
-
-    status.textContent = "Active";
-    status.style.color = "#22c55e";
-  };
-
-  box.querySelector("#stop").onclick = () => {
-    running = false;
-    stopObserver();
-
-    status.textContent = "Stopped";
-    status.style.color = "red";
-  };
 
 })();
