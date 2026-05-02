@@ -4,7 +4,7 @@
 
   let running = false;
 
-  // ===== UI (YOUR WHITE STYLE) =====
+  // ===== UI =====
   const ui = document.createElement("div");
 
   ui.style = `
@@ -70,21 +70,35 @@
     return null;
   }
 
+  // ✅ FIXED MOBIKWIK CLICK
   function clickMobikwik() {
-    const el = document.querySelector(".bgmobikwik") ||
-      [...document.querySelectorAll("*")]
+    let el = document.querySelector(".bgmobikwik");
+
+    if (!el) {
+      el = [...document.querySelectorAll("*")]
         .find(e => (e.innerText || "").toLowerCase().includes("mobikwik"));
+    }
 
     if (el) {
-      el.click();
-      return true;
+      let clickable = el.closest("button, div, span");
+      if (clickable) {
+        clickable.click();
+        return true;
+      }
     }
+
     return false;
   }
 
   async function handleSuccess() {
     fahhh.play();
-    clickMobikwik();
+
+    // 🔁 retry Mobikwik (no logic change, just reliability)
+    for (let i = 0; i < 10; i++) {
+      if (clickMobikwik()) break;
+      await sleep(100);
+    }
+
     aayeinn.play();
 
     running = false;
