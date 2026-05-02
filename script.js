@@ -25,7 +25,7 @@
   console.log("Local ID:", userId);
 
   // =========================
-  // 🔹 FIREBASE CHECK (REST)
+  // 🔹 FIREBASE CHECK (FINAL)
   // =========================
   async function checkUser(userId) {
     try {
@@ -36,29 +36,25 @@
       const res = await fetch(url);
       const data = await res.json();
 
-      if (!data.documents) {
-        console.log("No documents found");
+      if (!data.documents || !Array.isArray(data.documents)) {
         return false;
       }
 
-      const user = data.documents.find(doc => {
+      for (const doc of data.documents) {
+        const fields = doc.fields || {};
+
         const firebaseId =
-          doc.fields.userId?.stringValue ||
-          doc.fields.userId?.integerValue;
+          fields.userId?.stringValue ||
+          fields.userId?.integerValue;
 
-        console.log("Firebase ID:", firebaseId);
+        const active = fields.active?.booleanValue;
 
-        return String(firebaseId) === String(userId);
-      });
-
-      if (!user) {
-        console.log("User not found in Firebase");
-        return false;
+        if (String(firebaseId) === String(userId)) {
+          return active === true;
+        }
       }
 
-      const active = user.fields.active?.booleanValue;
-
-      return active === true;
+      return false;
 
     } catch (err) {
       console.log("Firebase error:", err);
