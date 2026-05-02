@@ -27,49 +27,39 @@
   // =========================
   // 🔹 FIREBASE CHECK (STABLE)
   // =========================
-  async function checkUser(userId) {
-    try {
-      const projectId = "amt-bot-control";
+ async function checkUser(userId) {
+  try {
+    const url = "https://firestore.googleapis.com/v1/projects/amt-bot-control/databases/(default)/documents/users";
 
-      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users`;
+    const res = await fetch(url);
+    const data = await res.json();
 
-      const res = await fetch(url);
-      const data = await res.json();
+    console.log("DATA:", data);
 
-      console.log("RAW DATA:", data);
+    const docs = data.documents || [];
+    const local = String(userId).trim();
 
-      const docs = data.documents || [];
-      const cleanLocal = String(userId).trim();
+    for (let doc of docs) {
+      const fields = doc.fields;
 
-      for (let i = 0; i < docs.length; i++) {
-        const fields = docs[i].fields || {};
+      const firebaseId =
+        fields.userId.stringValue ||
+        fields.userId.integerValue;
 
-        const firebaseId =
-          fields.userId?.stringValue ||
-          fields.userId?.integerValue ||
-          "";
+      console.log("Compare:", local, firebaseId);
 
-        const cleanFirebase = String(firebaseId).trim();
-
-        console.log("Comparing:", cleanLocal, cleanFirebase);
-
-        if (cleanFirebase === cleanLocal) {
-          console.log("MATCH FOUND");
-
-          const active = fields.active?.booleanValue;
-          return active === true;
-        }
+      if (String(firebaseId) === local) {
+        return fields.active.booleanValue === true;
       }
-
-      console.log("NO MATCH FOUND");
-      return false;
-
-    } catch (err) {
-      console.log("Firebase error:", err);
-      return false;
     }
-  }
 
+    return false;
+
+  } catch (e) {
+    console.log("Error:", e);
+    return false;
+  }
+}
   const allowed = await checkUser(userId);
 
   if (!allowed) {
