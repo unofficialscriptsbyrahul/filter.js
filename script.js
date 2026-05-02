@@ -85,9 +85,6 @@
 
       // 🔁 STEP 1: reset flow
       clickOTPUPI();
-      await sleep(80);
-
-      // 🔥 STEP 2: force Large filter
       clickLarge();
       await sleep(100 + Math.random()*80);
 
