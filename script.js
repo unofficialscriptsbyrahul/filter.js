@@ -16,7 +16,7 @@
 
   let userId;
   try {
-    userId = String(JSON.parse(raw).value);
+    userId = String(JSON.parse(raw).value).trim();
   } catch {
     alert("User data error");
     return;
@@ -25,7 +25,7 @@
   console.log("Local ID:", userId);
 
   // =========================
-  // 🔹 FIREBASE CHECK (FINAL)
+  // 🔹 FIREBASE CHECK (FINAL FIXED)
   // =========================
   async function checkUser(userId) {
     try {
@@ -37,8 +37,11 @@
       const data = await res.json();
 
       if (!data.documents || !Array.isArray(data.documents)) {
+        console.log("No documents found");
         return false;
       }
+
+      const cleanLocal = String(userId).trim();
 
       for (const doc of data.documents) {
         const fields = doc.fields || {};
@@ -47,9 +50,12 @@
           fields.userId?.stringValue ||
           fields.userId?.integerValue;
 
-        const active = fields.active?.booleanValue;
+        const cleanFirebase = String(firebaseId).trim();
 
-        if (String(firebaseId) === String(userId)) {
+        console.log("Comparing:", cleanLocal, cleanFirebase);
+
+        if (cleanFirebase === cleanLocal) {
+          const active = fields.active?.booleanValue;
           return active === true;
         }
       }
