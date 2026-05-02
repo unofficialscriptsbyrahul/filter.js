@@ -9,86 +9,123 @@
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+  // ---------- DEBUG ----------
+  function log(msg) {
+    console.log("BOT:", msg);
+    const el = document.getElementById("bot-log");
+    if (el) el.innerText = msg;
+  }
+
   function text(el) {
-    return (el.innerText || "").toLowerCase().trim();
+    return (el.innerText || "").toLowerCase().replace(/\s+/g, " ").trim();
   }
 
   function onPaymentPage() {
     return text(document.body).includes("select method payment");
   }
 
+  // ---------- OTP CLICK ----------
   function clickOTPUPI() {
-    const el = [...document.querySelectorAll(".tab-title")]
-      .find(e => text(e) === "otp-upi");
-    if (el) el.click();
+    const el = [...document.querySelectorAll("*")]
+      .find(e => text(e).includes("otp-upi") || text(e) === "otp upi");
+
+    if (el) {
+      el.click();
+      log("OTP-UPI clicked");
+      return true;
+    } else {
+      log("OTP-UPI NOT FOUND");
+      return false;
+    }
   }
 
+  // ---------- FIND AMOUNTS ----------
   function findMatches(value) {
-    const regex = new RegExp(`₹\\s*${value}(?!\\d)`);
-    return [...document.querySelectorAll(".amount")]
-      .filter(el => regex.test(el.innerText));
+    const all = [...document.querySelectorAll("*")].filter(e =>
+      text(e).includes("₹")
+    );
+
+    const matches = all.filter(e => {
+      const t = text(e).replace(/\s/g,"");
+      return t.includes(`₹${value}`);
+    });
+
+    log("Matches: " + matches.length);
+    return matches;
   }
 
-  function getBuyButton(amountEl) {
-    let container = amountEl.closest(".x-row")?.parentElement;
-    return container?.querySelector("button.van-button");
+  // ---------- FIND BUY BUTTON ----------
+  function getBuyButton(el) {
+    let node = el;
+
+    while (node && node !== document.body) {
+      const btn = [...node.querySelectorAll("button")]
+        .find(b => text(b).includes("buy"));
+
+      if (btn) return btn;
+
+      node = node.parentElement;
+    }
+
+    return null;
   }
 
   function highlight(matches) {
-    document.querySelectorAll(".amount").forEach(el => {
+    document.querySelectorAll("*").forEach(el => {
       el.style.outline = "";
-      el.style.background = "";
     });
 
     matches.slice(0,3).forEach(el => {
-      el.style.outline = "2px solid #22c55e";
-      el.style.background = "rgba(34,197,94,0.15)";
+      el.style.outline = "2px solid lime";
     });
   }
 
   function clickMobikwikInstant() {
-    const el = [...document.querySelectorAll("div,button,span")]
+    const el = [...document.querySelectorAll("*")]
       .find(e => text(e).includes("mobikwik"));
 
     if (el) {
       el.click();
+      log("Mobikwik clicked");
       return true;
+    } else {
+      log("Mobikwik NOT FOUND");
+      return false;
     }
-    return false;
   }
 
   async function mainLoop(value, indicator) {
     while (running) {
 
-      // Step 1: Always click OTP-UPI
       clickOTPUPI();
 
-      // Step 2: Instant scan
       const matches = findMatches(value);
       highlight(matches);
 
       if (matches.length === 0) {
-        await sleep(100); // Step 6
+        await sleep(100);
         continue;
       }
 
-      let success = false;
+      for (let el of matches.slice(0,3)) {
 
-      for (let amt of matches.slice(0,3)) {
-
-        const btn = getBuyButton(amt);
-        if (!btn) continue;
+        const btn = getBuyButton(el);
+        if (!btn) {
+          log("Buy not found");
+          continue;
+        }
 
         btn.click();
+        log("Clicked BUY");
 
-        // Step 4: micro detection loop (no fixed delay)
         for (let i = 0; i < 10; i++) {
 
           if (onPaymentPage()) {
 
+            log("Payment page detected");
+
             fahhh.play();
 
-            // Step 8: instant Mobikwik attempt
             clickMobikwikInstant();
 
             aayeinn.play();
@@ -102,11 +139,11 @@
         }
       }
 
-      // Step 7: no payment → wait then restart
       await sleep(100);
     }
   }
 
+  // ---------- UI ----------
   function createUI() {
     const ui = document.createElement("div");
 
@@ -114,27 +151,28 @@
       position:fixed;
       bottom:20px;
       right:20px;
-      width:240px;
-      background:rgba(255,255,255,0.6);
-      backdrop-filter:blur(10px);
-      color:#000;
-      padding:14px;
-      border-radius:14px;
+      width:260px;
+      background:#111;
+      color:#0f0;
+      padding:12px;
+      border-radius:12px;
       z-index:999999999;
-      font-family:sans-serif;
+      font-family:monospace;
     `;
 
     ui.innerHTML = `
       <div style="display:flex;justify-content:space-between;">
-        <div>💰 Bot</div>
+        <div>BOT</div>
         <div id="dot" style="width:10px;height:10px;border-radius:50%;background:red;"></div>
       </div>
 
       <input id="amt" placeholder="Amount"
-        style="width:100%;margin-top:10px;padding:8px;border-radius:8px;border:1px solid #ccc;" />
+        style="width:100%;margin-top:8px;padding:6px;" />
 
-      <button id="start" style="margin-top:10px;width:100%;padding:8px;background:#22c55e;color:#fff;border:none;border-radius:8px;">Start</button>
-      <button id="stop" style="margin-top:6px;width:100%;padding:8px;background:#ef4444;color:#fff;border:none;border-radius:8px;">Stop</button>
+      <button id="start" style="margin-top:8px;width:100%;">Start</button>
+      <button id="stop" style="margin-top:4px;width:100%;">Stop</button>
+
+      <div id="bot-log" style="margin-top:6px;font-size:11px;">Idle</div>
     `;
 
     document.body.appendChild(ui);
@@ -142,23 +180,21 @@
     const input = ui.querySelector("#amt");
     const dot = ui.querySelector("#dot");
 
-    function start() {
-      if (running) return;
+    ui.querySelector("#start").onclick = () => {
       if (!input.value.trim()) return alert("Enter amount");
 
       running = true;
-      dot.style.background = "green";
+      dot.style.background = "lime";
+      log("Started");
 
       mainLoop(input.value.trim(), dot);
-    }
+    };
 
-    function stop() {
+    ui.querySelector("#stop").onclick = () => {
       running = false;
       dot.style.background = "red";
-    }
-
-    ui.querySelector("#start").onclick = start;
-    ui.querySelector("#stop").onclick = stop;
+      log("Stopped");
+    };
   }
 
   createUI();
