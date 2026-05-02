@@ -4,25 +4,45 @@
 
   let running = false;
 
-  const taco = new Audio("https://www.myinstants.com/media/sounds/taco-bell-bong.mp3");
-  const cricket = new Audio("https://www.myinstants.com/media/sounds/cricket-sound.mp3");
+  // 🔊 Updated sounds
+  const fahhh = new Audio("https://www.myinstants.com/media/sounds/fahh.mp3");
+  const aayeinn = new Audio("https://www.myinstants.com/media/sounds/aayein.mp3");
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  function clickOTPUPI() {
-    document.querySelectorAll("button, div").forEach(el => {
-      if (el.innerText.toLowerCase().includes("otp-upi")) {
-        el.click();
+  function findAndClick(keyword) {
+    keyword = keyword.toLowerCase();
+
+    const elements = [...document.querySelectorAll("button, div, span")];
+
+    for (let el of elements) {
+      const text = el.innerText?.toLowerCase() || "";
+
+      if (text.includes(keyword)) {
+
+        // try clicking closest clickable parent
+        let clickable = el.closest("button, [role='button'], div, span");
+
+        if (clickable) {
+          clickable.click();
+          return true;
+        }
       }
-    });
+    }
+    return false;
+  }
+
+  function clickOTPUPI() {
+    return findAndClick("otp-upi");
   }
 
   function clickMobikwik() {
-    document.querySelectorAll("button").forEach(b => {
-      if (b.innerText.toLowerCase().includes("mobikwik")) {
-        b.click();
-      }
-    });
+    // try multiple variations
+    return (
+      findAndClick("mobikwik") ||
+      findAndClick("mobi kwik") ||
+      findAndClick("mobi")
+    );
   }
 
   function onPaymentPage() {
@@ -62,47 +82,51 @@
   async function mainLoop(value, indicator) {
     while (running) {
 
-      // STEP 1: Always reset to OTP-UPI
+      // STEP 1: force OTP-UPI
       clickOTPUPI();
-      await sleep(200);
+      await sleep(250);
 
-      // STEP 2: Scan
+      // STEP 2: scan
       let matches = findMatches(value);
       highlight(matches);
 
       if (matches.length > 0) {
 
-        // STEP 3: Try top 3
         for (let row of matches.slice(0,3)) {
 
           const btn = row.querySelector("button");
           if (!btn) continue;
 
           btn.click();
-          await sleep(400);
+          await sleep(300);
 
-          // STEP 4: Check payment page
           if (onPaymentPage()) {
-            taco.play();
+            fahhh.play();
 
-            await sleep(400);
+            await sleep(300);
 
-            clickMobikwik();
+            // 🔥 stronger Mobikwik click with retry
+            let success = false;
+            for (let i = 0; i < 3; i++) {
+              if (clickMobikwik()) {
+                success = true;
+                break;
+              }
+              await sleep(200);
+            }
 
-            await sleep(400);
-
-            cricket.play();
-
-            stop(indicator);
-            return;
+            if (success) {
+              await sleep(300);
+              aayeinn.play();
+              stop(indicator);
+              return;
+            }
           }
         }
 
-        // clicked but failed → retry fresh
         await sleep(200);
 
       } else {
-        // no match → retry fresh
         await sleep(200);
       }
     }
