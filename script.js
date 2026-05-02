@@ -79,17 +79,17 @@
           if (!btn) continue;
 
           btn.click();
-          await sleep(400);
+          await sleep(200);
 
           // STEP 4: Check payment page
           if (onPaymentPage()) {
             taco.play();
 
-            await sleep(400);
+            await sleep(200);
 
             clickMobikwik();
 
-            await sleep(400);
+            await sleep(200);
 
             cricket.play();
 
