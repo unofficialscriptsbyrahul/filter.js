@@ -4,51 +4,25 @@
 
   let running = false;
 
-  // ✅ Sounds (direct links)
-  const successSound = new Audio("https://www.myinstants.com/media/sounds/yoooooooooooo-60048.mp3");
-  const finalSound = new Audio("https://www.myinstants.com/media/sounds/maa-tari-oo-bhai-7312.mp3");
+  const taco = new Audio("https://www.myinstants.com/media/sounds/taco-bell-bong.mp3");
+  const cricket = new Audio("https://www.myinstants.com/media/sounds/cricket-sound.mp3");
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  // 🔊 Safe play (avoids silent failure)
-  async function safePlay(audio) {
-    try {
-      audio.currentTime = 0;
-      await audio.play();
-    } catch (e) {
-      console.log("Sound blocked:", e);
-    }
-  }
-
   function clickOTPUPI() {
-    document.querySelectorAll("button, div, span").forEach(el => {
-      if ((el.innerText || "").toLowerCase().includes("otp-upi")) {
+    document.querySelectorAll("button, div").forEach(el => {
+      if (el.innerText.toLowerCase().includes("otp-upi")) {
         el.click();
       }
     });
   }
 
-  // 🔥 Strong Mobikwik click
   function clickMobikwik() {
-    let found = false;
-
-    const elements = document.querySelectorAll("button, div, span, li");
-
-    elements.forEach(el => {
-      const text = (el.innerText || "").toLowerCase();
-      const html = (el.outerHTML || "").toLowerCase();
-
-      if (
-        text.includes("mobikwik") ||
-        html.includes("mobikwik") ||
-        (el.className || "").toLowerCase().includes("mobikwik")
-      ) {
-        el.click();
-        found = true;
+    document.querySelectorAll("button").forEach(b => {
+      if (b.innerText.toLowerCase().includes("mobikwik")) {
+        b.click();
       }
     });
-
-    return found;
   }
 
   function onPaymentPage() {
@@ -88,43 +62,47 @@
   async function mainLoop(value, indicator) {
     while (running) {
 
-      // reset to OTP-UPI
+      // STEP 1: Always reset to OTP-UPI
       clickOTPUPI();
-      await sleep(100);
+      await sleep(200);
 
+      // STEP 2: Scan
       let matches = findMatches(value);
       highlight(matches);
 
       if (matches.length > 0) {
 
+        // STEP 3: Try top 3
         for (let row of matches.slice(0,3)) {
 
           const btn = row.querySelector("button");
           if (!btn) continue;
 
           btn.click();
-          await sleep(200);
+          await sleep(400);
 
+          // STEP 4: Check payment page
           if (onPaymentPage()) {
+            taco.play();
 
-            await safePlay(successSound);
-
-            await sleep(200);
+            await sleep(400);
 
             clickMobikwik();
 
-            await sleep(200);
+            await sleep(400);
 
-            await safePlay(finalSound);
+            cricket.play();
 
             stop(indicator);
             return;
           }
         }
 
+        // clicked but failed → retry fresh
         await sleep(200);
 
       } else {
+        // no match → retry fresh
         await sleep(200);
       }
     }
@@ -171,17 +149,6 @@
 
       running = true;
       dot.style.background = "green";
-
-      // 🔓 unlock audio on user interaction
-      successSound.play().then(() => {
-        successSound.pause();
-        successSound.currentTime = 0;
-      }).catch(()=>{});
-
-      finalSound.play().then(() => {
-        finalSound.pause();
-        finalSound.currentTime = 0;
-      }).catch(()=>{});
 
       mainLoop(input.value.trim(), dot);
     }
