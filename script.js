@@ -77,7 +77,7 @@
       if (++tries > 10) {
         clearInterval(interval);
       }
-    }, 120);
+    }, 100);
   }
 
   async function mainLoop(value, indicator) {
@@ -119,10 +119,10 @@
           }
         }
 
-        await sleep(150);
+        await sleep(100);
 
       } else {
-        await sleep(150);
+        await sleep(100);
       }
     }
   }
