@@ -88,7 +88,7 @@
       clickLarge();
 
       // small delay only AFTER both clicks
-      await sleep(100 + Math.random()*80);
+      await sleep(100 + Math.random()*10);
 
       let matches = findMatches(value);
       highlight(matches);
@@ -100,10 +100,10 @@
           let buyBtn = findBuyButton(row);
           if (!buyBtn) continue;
 
-          await sleep(60 + Math.random()*80);
+          await sleep(60 + Math.random()*10);
           buyBtn.click();
 
-          await sleep(120 + Math.random()*100);
+          await sleep(120 + Math.random()*10);
 
           if (onPaymentPage()) {
 
