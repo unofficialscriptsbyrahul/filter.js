@@ -4,25 +4,40 @@
 
   let running = false;
 
-  const taco = new Audio("https://www.myinstants.com/media/sounds/taco-bell-bong.mp3");
-  const cricket = new Audio("https://www.myinstants.com/media/sounds/cricket-sound.mp3");
+  // ✅ FIXED: direct audio links
+  const successSound = new Audio("https://www.myinstants.com/media/sounds/yoooooooooooo-60048.mp3");
+  const finalSound = new Audio("https://www.myinstants.com/media/sounds/maa-tari-oo-bhai-7312.mp3");
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   function clickOTPUPI() {
-    document.querySelectorAll("button, div").forEach(el => {
+    document.querySelectorAll("button, div, span").forEach(el => {
       if (el.innerText.toLowerCase().includes("otp-upi")) {
         el.click();
       }
     });
   }
 
+  // 🚨 STRONGER Mobikwik click
   function clickMobikwik() {
-    document.querySelectorAll("button").forEach(b => {
-      if (b.innerText.toLowerCase().includes("mobikwik")) {
-        b.click();
+    let found = false;
+
+    document.querySelectorAll("button, div, span").forEach(el => {
+      if (el.innerText.toLowerCase().includes("mobikwik")) {
+        el.click();
+        found = true;
       }
     });
+
+    // fallback: click parent container if text inside
+    if (!found) {
+      document.querySelectorAll("*").forEach(el => {
+        if (!found && el.innerText && el.innerText.toLowerCase().includes("mobikwik")) {
+          el.click();
+          found = true;
+        }
+      });
+    }
   }
 
   function onPaymentPage() {
@@ -62,47 +77,41 @@
   async function mainLoop(value, indicator) {
     while (running) {
 
-      // STEP 1: Always reset to OTP-UPI
       clickOTPUPI();
       await sleep(200);
 
-      // STEP 2: Scan
       let matches = findMatches(value);
       highlight(matches);
 
       if (matches.length > 0) {
 
-        // STEP 3: Try top 3
         for (let row of matches.slice(0,3)) {
 
           const btn = row.querySelector("button");
           if (!btn) continue;
 
           btn.click();
-          await sleep(200);
+          await sleep(300); // ⬅️ increased slightly for reliability
 
-          // STEP 4: Check payment page
           if (onPaymentPage()) {
-            taco.play();
+            successSound.play();
 
-            await sleep(200);
+            await sleep(400);
 
             clickMobikwik();
 
-            await sleep(200);
+            await sleep(500); // ⬅️ give time to register click
 
-            cricket.play();
+            finalSound.play();
 
             stop(indicator);
             return;
           }
         }
 
-        // clicked but failed → retry fresh
         await sleep(200);
 
       } else {
-        // no match → retry fresh
         await sleep(200);
       }
     }
