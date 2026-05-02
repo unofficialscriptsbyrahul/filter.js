@@ -9,21 +9,46 @@
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  // ---------- HELPERS ----------
-
   function text(el) {
-    return (el.innerText || "").toLowerCase().replace(/\s+/g, " ").trim();
+    return (el.innerText || "").toLowerCase().trim();
   }
 
   function onPaymentPage() {
     return text(document.body).includes("select method payment");
   }
 
-  function clickByText(keyword) {
-    keyword = keyword.toLowerCase();
+  function clickOTPUPI() {
+    const el = [...document.querySelectorAll(".tab-title")]
+      .find(e => text(e) === "otp-upi");
+    if (el) el.click();
+  }
 
-    const el = [...document.querySelectorAll("button, div, span")]
-      .find(e => text(e).includes(keyword));
+  function findMatches(value) {
+    const regex = new RegExp(`₹\\s*${value}(?!\\d)`);
+    return [...document.querySelectorAll(".amount")]
+      .filter(el => regex.test(el.innerText));
+  }
+
+  function getBuyButton(amountEl) {
+    let container = amountEl.closest(".x-row")?.parentElement;
+    return container?.querySelector("button.van-button");
+  }
+
+  function highlight(matches) {
+    document.querySelectorAll(".amount").forEach(el => {
+      el.style.outline = "";
+      el.style.background = "";
+    });
+
+    matches.slice(0,3).forEach(el => {
+      el.style.outline = "2px solid #22c55e";
+      el.style.background = "rgba(34,197,94,0.15)";
+    });
+  }
+
+  function clickMobikwikInstant() {
+    const el = [...document.querySelectorAll("div,button,span")]
+      .find(e => text(e).includes("mobikwik"));
 
     if (el) {
       el.click();
@@ -32,103 +57,55 @@
     return false;
   }
 
-  function clickOTPUPI() {
-    return clickByText("otp-upi");
-  }
-
-  function clickLarge() {
-    return clickByText("large");
-  }
-
-  function findMatches(value) {
-    const regex = new RegExp(`₹\\s*${value}(?!\\d)`);
-    return [...document.querySelectorAll("[class*=row],[class*=item]")]
-      .filter(row => regex.test(row.innerText));
-  }
-
-  function findBuyButton(row) {
-    let cur = row;
-
-    while (cur && cur !== document.body) {
-      const btn = [...cur.querySelectorAll("button, span, div")]
-        .find(e => text(e).includes("buy"));
-      if (btn) return btn;
-      cur = cur.parentElement;
-    }
-    return null;
-  }
-
-  function highlight(matches) {
-    document.querySelectorAll("[class*=row],[class*=item]").forEach(r=>{
-      r.style.outline = "";
-      r.style.background = "";
-    });
-
-    matches.slice(0,3).forEach(r=>{
-      r.style.outline="2px solid #22c55e";
-      r.style.background="rgba(34,197,94,0.15)";
-    });
-  }
-
-  async function clickMobikwik() {
-    for (let i = 0; i < 8; i++) {
-      if (clickByText("mobikwik")) {
-        aayeinn.play();
-        return true;
-      }
-      await sleep(100);
-    }
-    return false;
-  }
-
-  // ---------- MAIN LOOP ----------
-
   async function mainLoop(value, indicator) {
     while (running) {
 
-      // STEP 1: set correct state
+      // Step 1: Always click OTP-UPI
       clickOTPUPI();
-      clickLarge();
 
-      await sleep(120); // allow UI refresh
-
-      // STEP 2: scan
+      // Step 2: Instant scan
       const matches = findMatches(value);
       highlight(matches);
 
       if (matches.length === 0) {
-        await sleep(120);
+        await sleep(100); // Step 6
         continue;
       }
 
-      // STEP 3: act
-      for (let row of matches.slice(0,3)) {
+      let success = false;
 
-        const btn = findBuyButton(row);
+      for (let amt of matches.slice(0,3)) {
+
+        const btn = getBuyButton(amt);
         if (!btn) continue;
 
         btn.click();
-        await sleep(120);
 
-        if (onPaymentPage()) {
-          fahhh.play();
+        // Step 4: micro detection loop (no fixed delay)
+        for (let i = 0; i < 10; i++) {
 
-          await sleep(150);
+          if (onPaymentPage()) {
 
-          await clickMobikwik();
+            fahhh.play();
 
-          running = false;
-          indicator.style.background = "red";
-          return;
+            // Step 8: instant Mobikwik attempt
+            clickMobikwikInstant();
+
+            aayeinn.play();
+
+            running = false;
+            indicator.style.background = "red";
+            return;
+          }
+
+          await sleep(20);
         }
       }
 
-      // retry loop
-      await sleep(120);
+      // Step 7: no payment → wait then restart
+      await sleep(100);
     }
   }
-
-  // ---------- UI ----------
 
   function createUI() {
     const ui = document.createElement("div");
