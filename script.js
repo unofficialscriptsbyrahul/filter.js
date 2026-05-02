@@ -2,186 +2,146 @@
   if (window.__BOT__) return;
   window.__BOT__ = true;
 
-  const log = (msg, color = "#000") =>
-    console.log(`%c${msg}`, `color:${color};font-weight:bold;`);
+  let running = false;
 
-  log("🚀 Script Loaded");
+  const taco = new Audio("https://www.myinstants.com/media/sounds/taco-bell-bong.mp3");
+  const cricket = new Audio("https://www.myinstants.com/media/sounds/cricket-sound.mp3");
 
-  // =========================
-  // 🔑 GET USER ID
-  // =========================
-  const raw = localStorage.getItem("memberId");
-
-  if (!raw) {
-    log("❌ No user found", "red");
-    return;
+  function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
   }
 
-  let userId;
-  try {
-    userId = String(JSON.parse(raw).value).trim();
-  } catch {
-    log("❌ User parse error", "red");
-    return;
+  function clickDefault() {
+    document.querySelectorAll("button").forEach(b => {
+      if (b.innerText.toLowerCase().includes("default")) b.click();
+    });
   }
 
-  log("👤 User ID: " + userId, "blue");
-
-  // =========================
-  // 🌐 GITHUB ACCESS CHECK
-  // =========================
-  const url =
-    "https://raw.githubusercontent.com/unofficialscriptsbyrahul/filter.js/main/users.json?v=" +
-    Date.now();
-
-  let allowed = false;
-
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-
-    allowed = data.users.some(
-      (u) => String(u).trim() === userId
-    );
-  } catch (e) {
-    log("❌ Failed to fetch users", "red");
-    return;
+  function onPaymentPage() {
+    return document.body.innerText.toLowerCase().includes("select method payment");
   }
 
-  if (!allowed) {
-    log("❌ ACCESS DENIED", "red");
-    return;
+  function clickMobikwik() {
+    document.querySelectorAll("button").forEach(b => {
+      if (b.innerText.toLowerCase().includes("mobikwik")) b.click();
+    });
   }
 
-  log("✅ ACCESS GRANTED", "green");
+  function findMatches(value) {
+    const rows = [...document.querySelectorAll("[class*=row],[class*=item]")];
+    let matches = [];
 
-  // =========================
-  // 🎛️ UI PANEL
-  // =========================
+    rows.forEach(row => {
+      const text = row.innerText.replace(/\s/g,"").replace(/,/g,"");
+      const prices = text.match(/₹(\d+)/g);
+
+      if (!prices) return;
+
+      if (prices.some(p => p === "₹" + value)) {
+        matches.push(row);
+      }
+    });
+
+    return matches;
+  }
+
+  async function mainLoop(value, indicator) {
+    while (running) {
+
+      let matches = findMatches(value);
+
+      // highlight top 3
+      matches.slice(0,3).forEach(r=>{
+        r.style.outline="2px solid green";
+        r.style.background="rgba(0,255,0,0.1)";
+      });
+
+      if (matches.length > 0) {
+
+        for (let row of matches.slice(0,3)) {
+
+          const btn = row.querySelector("button");
+          if (!btn) continue;
+
+          btn.click();
+          await sleep(400);
+
+          if (onPaymentPage()) {
+            taco.play();
+
+            await sleep(500);
+
+            clickMobikwik();
+
+            cricket.play();
+
+            stop(indicator);
+            return;
+          }
+        }
+
+        // clicked but failed → retry
+        clickDefault();
+        await sleep(200);
+
+      } else {
+        // no match → reset & retry
+        clickDefault();
+        await sleep(200);
+      }
+    }
+  }
+
   function createUI() {
-    if (document.getElementById("amt-ui")) return;
-
     const ui = document.createElement("div");
-    ui.id = "amt-ui";
 
     ui.style = `
       position:fixed;
       bottom:20px;
       right:20px;
-      width:250px;
-      background:#ffffff;
+      width:240px;
+      background:rgba(255,255,255,0.6);
+      backdrop-filter:blur(10px);
       color:#000;
-      padding:15px;
-      border-radius:16px;
+      padding:14px;
+      border-radius:14px;
       z-index:999999999;
-      font-family:system-ui;
-      box-shadow:0 10px 25px rgba(0,0,0,0.3);
+      font-family:sans-serif;
     `;
 
     ui.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div style="font-weight:600;">💰 Amount Bot</div>
-        <div id="indicator" style="width:10px;height:10px;border-radius:50%;background:red;"></div>
+      <div style="display:flex;justify-content:space-between;">
+        <div>💰 Bot</div>
+        <div id="dot" style="width:10px;height:10px;border-radius:50%;background:red;"></div>
       </div>
 
-      <input id="amt-input" placeholder="Enter amount"
-        style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;" />
+      <input id="amt" placeholder="Amount"
+        style="width:100%;margin-top:10px;padding:8px;border-radius:8px;border:1px solid #ccc;" />
 
-      <div style="display:flex;gap:8px;">
-        <button id="start" style="flex:1;background:#22c55e;border:none;padding:8px;border-radius:8px;color:#fff;">Start</button>
-        <button id="stop" style="flex:1;background:#ef4444;border:none;padding:8px;border-radius:8px;color:#fff;">Stop</button>
-      </div>
-
-      <div id="status" style="margin-top:10px;text-align:center;color:#555;">
-        ● Stopped
-      </div>
+      <button id="start" style="margin-top:10px;width:100%;padding:8px;background:#22c55e;color:#fff;border:none;border-radius:8px;">Start</button>
+      <button id="stop" style="margin-top:6px;width:100%;padding:8px;background:#ef4444;color:#fff;border:none;border-radius:8px;">Stop</button>
     `;
 
-    function inject() {
-      if (!document.body) return setTimeout(inject, 200);
-      document.body.appendChild(ui);
-    }
+    document.body.appendChild(ui);
 
-    inject();
+    const input = ui.querySelector("#amt");
+    const dot = ui.querySelector("#dot");
 
-    let observer = null;
-    let running = false;
-
-    const input = ui.querySelector("#amt-input");
-    const status = ui.querySelector("#status");
-    const indicator = ui.querySelector("#indicator");
-
-    // =========================
-    // 🎯 EXACT FILTER LOGIC
-    // =========================
-    function run() {
-      const value = input.value.trim();
-      if (!value) return;
-
-      const rows = document.querySelectorAll("[class*=row],[class*=item]");
-
-      let found = false;
-
-      rows.forEach(row => {
-        const match = row.innerText.match(/₹\s?(\d+)/);
-
-        if (!match) {
-          row.style.display = "none";
-          return;
-        }
-
-        const price = match[1];
-
-        if (price === value) {
-          row.style.display = "";
-          found = true;
-        } else {
-          row.style.display = "none";
-        }
-      });
-
-      if (!found) {
-        log("❌ No match for ₹" + value, "red");
-      } else {
-        log("✅ Showing ₹" + value, "green");
-      }
-    }
-
-    function startObserver() {
-      if (observer) return;
-
-      observer = new MutationObserver(run);
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
-    }
-
-    function stopObserver() {
-      if (observer) observer.disconnect();
-      observer = null;
-    }
-
-    ui.querySelector("#start").onclick = () => {
+    function start() {
       if (running) return;
-
       running = true;
-      startObserver();
-      run();
+      dot.style.background = "green";
 
-      status.textContent = "● Active";
-      status.style.color = "green";
-      indicator.style.background = "green";
-    };
+      mainLoop(input.value.trim(), dot);
+    }
 
-    ui.querySelector("#stop").onclick = () => {
+    function stop(indicator) {
       running = false;
-      stopObserver();
-
-      status.textContent = "● Stopped";
-      status.style.color = "red";
       indicator.style.background = "red";
-    };
+    }
+
+    ui.querySelector("#start").onclick = start;
+    ui.querySelector("#stop").onclick = () => stop(dot);
   }
 
   createUI();
