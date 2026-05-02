@@ -28,57 +28,49 @@
   // 🔹 FIREBASE CHECK (FULL FIXED)
   // =========================
   async function checkUser(userId) {
-    try {
-      const projectId = "amt-bot-control";
+  try {
+    const projectId = "amt-bot-control";
 
-      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users`;
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users`;
 
-      const res = await fetch(url);
-      const data = await res.json();
+    const res = await fetch(url);
+    const data = await res.json();
 
-      if (!data.documents || !Array.isArray(data.documents)) {
-        console.log("No documents found");
-        return false;
+    console.log("RAW DATA:", data);
+
+    // 🔥 FORCE SAFE ARRAY
+    const docs = data.documents || [];
+
+    const cleanLocal = String(userId).trim();
+
+    for (let i = 0; i < docs.length; i++) {
+      const doc = docs[i];
+      const fields = doc.fields || {};
+
+      const firebaseId =
+        fields.userId?.stringValue ||
+        fields.userId?.integerValue;
+
+      const cleanFirebase = String(firebaseId || "").trim();
+
+      console.log("Comparing:", cleanLocal, cleanFirebase);
+
+      if (cleanFirebase === cleanLocal) {
+        console.log("MATCH FOUND");
+
+        const active = fields.active?.booleanValue;
+        return active === true;
       }
-
-      const cleanLocal = String(userId).trim();
-
-      for (let i = 0; i < data.documents.length; i++) {
-        const doc = data.documents[i];
-        const fields = doc.fields || {};
-
-        const firebaseId =
-          fields.userId?.stringValue ||
-          fields.userId?.integerValue;
-
-        const cleanFirebase = String(firebaseId || "").trim();
-
-        console.log("Comparing:", cleanLocal, cleanFirebase);
-
-        if (cleanFirebase === cleanLocal) {
-          console.log("MATCH FOUND");
-
-          const active = fields.active?.booleanValue;
-          return active === true;
-        }
-      }
-
-      console.log("NO MATCH FOUND");
-      return false;
-
-    } catch (err) {
-      console.log("Firebase error:", err);
-      return false;
     }
+
+    console.log("NO MATCH FOUND");
+    return false;
+
+  } catch (err) {
+    console.log("Firebase error:", err);
+    return false;
   }
-
-  const allowed = await checkUser(userId);
-
-  if (!allowed) {
-    alert("Access denied");
-    return;
-  }
-
+}
   console.log("✅ ACCESS GRANTED");
 
   // =========================
