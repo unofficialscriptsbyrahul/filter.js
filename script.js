@@ -83,86 +83,124 @@
   // =========================
   function startBot() {
 
-    let running = false;
-    let observer = null;
+  console.log("Starting UI...");
 
-    const box = document.createElement("div");
-    box.style = `
-      position:fixed;
-      bottom:20px;
-      right:20px;
-      width:240px;
-      backdrop-filter: blur(14px);
-      background: rgba(20,20,20,0.85);
-      color:#fff;
-      padding:14px;
-      border-radius:16px;
-      z-index:99999;
-      font-family: system-ui, sans-serif;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    `;
+  let running = false;
+  let observer = null;
 
-    box.innerHTML = `
-      <div style="font-size:15px;font-weight:600;margin-bottom:10px;">
-        💰 Amount Bot
-      </div>
+  const box = document.createElement("div");
 
-      <input id="amt" placeholder="Enter amount"
-        style="
-          width:100%;
-          padding:8px;
-          border-radius:8px;
-          border:none;
-          outline:none;
-          margin-bottom:10px;
-          background:#1f1f1f;
-          color:#fff;
-        " />
+  box.style.position = "fixed";
+  box.style.bottom = "20px";
+  box.style.right = "20px";
+  box.style.width = "240px";
+  box.style.background = "rgba(20,20,20,0.95)";
+  box.style.color = "#fff";
+  box.style.padding = "14px";
+  box.style.borderRadius = "16px";
+  box.style.zIndex = "999999999";
+  box.style.fontFamily = "system-ui, sans-serif";
+  box.style.boxShadow = "0 10px 30px rgba(0,0,0,0.6)";
 
-      <div style="display:flex;gap:8px;">
-        <button id="start"
-          style="
-            flex:1;
-            padding:8px;
-            border:none;
-            border-radius:8px;
-            background:#22c55e;
-            color:#fff;
-            font-weight:600;
-          ">
-          Start
-        </button>
+  box.innerHTML = `
+    <div style="font-weight:600;margin-bottom:10px;">
+      💰 Amount Bot
+    </div>
 
-        <button id="stop"
-          style="
-            flex:1;
-            padding:8px;
-            border:none;
-            border-radius:8px;
-            background:#ef4444;
-            color:#fff;
-            font-weight:600;
-          ">
-          Stop
-        </button>
-      </div>
+    <input id="amt" placeholder="Enter amount"
+      style="
+        width:100%;
+        padding:8px;
+        border-radius:8px;
+        border:none;
+        margin-bottom:10px;
+        background:#1f1f1f;
+        color:#fff;
+      " />
 
-      <div id="status"
-        style="
-          margin-top:10px;
-          font-size:13px;
-          color:#aaa;
-          text-align:center;
-        ">
-        ● Stopped
-      </div>
-    `;
+    <div style="display:flex;gap:8px;">
+      <button id="start" style="flex:1;background:#22c55e;border:none;padding:8px;border-radius:8px;color:#fff;">
+        Start
+      </button>
+
+      <button id="stop" style="flex:1;background:#ef4444;border:none;padding:8px;border-radius:8px;color:#fff;">
+        Stop
+      </button>
+    </div>
+
+    <div id="status" style="margin-top:10px;text-align:center;color:#aaa;">
+      ● Stopped
+    </div>
+  `;
+
+  function injectUI() {
+    if (!document.body) return setTimeout(injectUI, 200);
 
     document.body.appendChild(box);
+    console.log("UI injected");
+  }
 
-    const input = box.querySelector("#amt");
-    const status = box.querySelector("#status");
+  injectUI();
 
+  const input = box.querySelector("#amt");
+  const status = box.querySelector("#status");
+
+  function run() {
+    const value = input.value.trim();
+    if (!value) return;
+
+    const rows = document.querySelectorAll("[class*=row],[class*=item]");
+
+    rows.forEach(row => {
+      const text = row.innerText;
+
+      const match =
+        text.includes("₹" + value) &&
+        !text.includes("₹" + value + "0");
+
+      row.style.display = match ? "" : "none";
+
+      if (match) {
+        const btn = row.querySelector("button");
+        if (btn) btn.click();
+      }
+    });
+  }
+
+  function startObserver() {
+    if (observer) return;
+
+    observer = new MutationObserver(run);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  function stopObserver() {
+    if (observer) observer.disconnect();
+    observer = null;
+  }
+
+  box.querySelector("#start").onclick = () => {
+    if (running) return;
+
+    running = true;
+    startObserver();
+    run();
+
+    status.textContent = "● Active";
+    status.style.color = "#22c55e";
+  };
+
+  box.querySelector("#stop").onclick = () => {
+    running = false;
+    stopObserver();
+
+    status.textContent = "● Stopped";
+    status.style.color = "#ef4444";
+  };
+}
     // ================= BOT =================
     function run() {
       const value = input.value.trim();
