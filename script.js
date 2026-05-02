@@ -70,7 +70,6 @@
     return null;
   }
 
-  // ✅ FIXED MOBIKWIK CLICK
   function clickMobikwik() {
     let el = document.querySelector(".bgmobikwik");
 
@@ -90,16 +89,23 @@
     return false;
   }
 
+  // ✅ FIXED HANDLE SUCCESS (ONLY CHANGE)
   async function handleSuccess() {
     fahhh.play();
 
-    // 🔁 retry Mobikwik (no logic change, just reliability)
-    for (let i = 0; i < 10; i++) {
-      if (clickMobikwik()) break;
-      await sleep(100);
+    let clicked = false;
+
+    for (let i = 0; i < 15; i++) {
+      if (clickMobikwik()) {
+        clicked = true;
+        break;
+      }
+      await sleep(120);
     }
 
-    aayeinn.play();
+    if (clicked) {
+      aayeinn.play();
+    }
 
     running = false;
     dot.style.background = "red";
