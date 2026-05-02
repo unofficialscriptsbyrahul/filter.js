@@ -9,42 +9,44 @@
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+  function onPaymentPage() {
+    return document.body.innerText.toLowerCase().includes("select method payment");
+  }
+
   function clickOTPUPI() {
-    document.querySelectorAll("button, div").forEach(el => {
-      if (el.innerText.toLowerCase().includes("otp-upi")) {
+    document.querySelectorAll("button, div, span").forEach(el => {
+      if (el.innerText?.toLowerCase().includes("otp-upi")) {
         el.click();
       }
     });
   }
 
-  function clickMobikwik() {
-    document.querySelectorAll("button").forEach(b => {
-      if (b.innerText.toLowerCase().includes("mobikwik")) {
-        b.click();
+  function clickLarge() {
+    document.querySelectorAll("button, div, span").forEach(el => {
+      if (el.innerText?.toLowerCase().trim() === "large") {
+        el.click();
       }
     });
   }
 
-  function onPaymentPage() {
-    return document.body.innerText.toLowerCase().includes("select method payment");
+  function findBuyButton(startEl) {
+    let current = startEl;
+    while (current && current !== document.body) {
+      let btn = current.querySelector("button, .van-button__text");
+      if (btn && btn.innerText?.toLowerCase().includes("buy")) {
+        return btn;
+      }
+      current = current.parentElement;
+    }
+    return null;
   }
 
   function findMatches(value) {
-    const rows = [...document.querySelectorAll("[class*=row],[class*=item]")];
-    let matches = [];
-
-    rows.forEach(row => {
-      const text = row.innerText.replace(/\s/g,"").replace(/,/g,"");
-      const prices = text.match(/₹(\d+)/g);
-
-      if (!prices) return;
-
-      if (prices.some(p => p === "₹" + value)) {
-        matches.push(row);
-      }
-    });
-
-    return matches;
+    return [...document.querySelectorAll("[class*=row],[class*=item]")]
+      .filter(row => {
+        const text = row.innerText.replace(/\s/g,"").replace(/,/g,"");
+        return new RegExp(`₹${value}(?!\\d)`).test(text);
+      });
   }
 
   function highlight(matches) {
@@ -59,51 +61,71 @@
     });
   }
 
+  function clickMobikwikFast() {
+    let tries = 0;
+
+    const interval = setInterval(() => {
+      const el = [...document.querySelectorAll("button, div, span")]
+        .find(e => e.innerText?.toLowerCase().includes("mobikwik"));
+
+      if (el) {
+        el.click();
+        aayeinn.play();
+        clearInterval(interval);
+      }
+
+      if (++tries > 10) {
+        clearInterval(interval);
+      }
+    }, 120);
+  }
+
   async function mainLoop(value, indicator) {
     while (running) {
 
-      // STEP 1: Always reset to OTP-UPI
+      // 🔁 STEP 1: reset flow
       clickOTPUPI();
-      await sleep(200);
+      await sleep(80);
 
-      // STEP 2: Scan
+      // 🔥 STEP 2: force Large filter
+      clickLarge();
+      await sleep(100 + Math.random()*80);
+
+      // 🔍 STEP 3: scan
       let matches = findMatches(value);
       highlight(matches);
 
       if (matches.length > 0) {
 
-        // STEP 3: Try top 3
         for (let row of matches.slice(0,3)) {
 
-          const btn = row.querySelector("button");
-          if (!btn) continue;
+          let buyBtn = findBuyButton(row);
+          if (!buyBtn) continue;
 
-          btn.click();
-          await sleep(200);
+          await sleep(60 + Math.random()*80);
+          buyBtn.click();
 
-          // STEP 4: Check payment page
+          await sleep(120 + Math.random()*100);
+
           if (onPaymentPage()) {
+
+            // 🎯 SUCCESS
             fahhh.play();
 
-            await sleep(100);
+            await sleep(200);
 
-            clickMobikwik();
+            clickMobikwikFast();
 
-            await sleep(100);
-
-            aayeinn.play();
-
-            stop(indicator);
+            running = false;
+            indicator.style.background = "red";
             return;
           }
         }
 
-        // clicked but failed → retry fresh
-        await sleep(200);
+        await sleep(150);
 
       } else {
-        // no match → retry fresh
-        await sleep(200);
+        await sleep(150);
       }
     }
   }
@@ -153,13 +175,13 @@
       mainLoop(input.value.trim(), dot);
     }
 
-    function stop(indicator) {
+    function stop() {
       running = false;
-      indicator.style.background = "red";
+      dot.style.background = "red";
     }
 
     ui.querySelector("#start").onclick = start;
-    ui.querySelector("#stop").onclick = () => stop(dot);
+    ui.querySelector("#stop").onclick = stop;
   }
 
   createUI();
