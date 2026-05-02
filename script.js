@@ -25,7 +25,7 @@
   console.log("Local ID:", userId);
 
   // =========================
-  // 🔹 FIREBASE CHECK (FINAL FIXED)
+  // 🔹 FIREBASE CHECK (FULL FIXED)
   // =========================
   async function checkUser(userId) {
     try {
@@ -43,23 +43,27 @@
 
       const cleanLocal = String(userId).trim();
 
-      for (const doc of data.documents) {
+      for (let i = 0; i < data.documents.length; i++) {
+        const doc = data.documents[i];
         const fields = doc.fields || {};
 
         const firebaseId =
           fields.userId?.stringValue ||
           fields.userId?.integerValue;
 
-        const cleanFirebase = String(firebaseId).trim();
+        const cleanFirebase = String(firebaseId || "").trim();
 
         console.log("Comparing:", cleanLocal, cleanFirebase);
 
         if (cleanFirebase === cleanLocal) {
+          console.log("MATCH FOUND");
+
           const active = fields.active?.booleanValue;
           return active === true;
         }
       }
 
+      console.log("NO MATCH FOUND");
       return false;
 
     } catch (err) {
