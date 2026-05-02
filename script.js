@@ -133,9 +133,9 @@
         let success = await clickTargets(targets);
         if (success) return;
 
-        await sleep(100);
+        await sleep(80);
       } else {
-        await sleep(100);
+        await sleep(80);
       }
     }
   }
