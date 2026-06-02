@@ -76,7 +76,7 @@ async function start() {
 
   ui.innerHTML = `
     <div style="display:flex;justify-content:space-between;">
-      <div>💰 Bot</div>
+      <div>Auto Bot By Bagota</div>
       <div id="dot" style="width:10px;height:10px;border-radius:50%;background:red;"></div>
     </div>
 
