@@ -10,22 +10,29 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
    async function start() {
 
-  alert("START CLICKED");
+  alert("1");
 
   const settings = await getSettings();
+
+  alert("2");
 
   if (settings.bot_enabled !== "true") {
     alert("Bot Disabled By Admin");
     return;
   }
 
+  alert("3");
+
   const uid = localStorage.getItem("bot_uid");
+
   alert("UID = " + uid);
 
   if (!uid) {
     alert("UID Not Found");
     return;
   }
+
+  alert("4");
 
   try {
 
@@ -36,6 +43,23 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
           apikey: SUPABASE_KEY,
           Authorization: `Bearer ${SUPABASE_KEY}`
         }
+      }
+    );
+
+    alert("5");
+
+    const users = await res.json();
+
+    alert("6");
+
+  } catch (err) {
+
+    alert("ERROR: " + err.message);
+    return;
+  }
+
+  alert("7");
+}
       }
     );
 
