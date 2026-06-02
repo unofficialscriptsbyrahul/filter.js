@@ -1,8 +1,10 @@
-async function start() {
+const SUPABASE_URL = "https://bsmajslllovdwtfowfmc.supabase.co";
+
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWFqc2xsbG92ZHd0Zm93Zm1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMzcyMTAsImV4cCI6MjA5NTkxMzIxMH0.VOeTMwU0c52PWnRCT9KK7VnNQzOd-OT30Rh4lDZ8-3c";
+
+    async function start() {
 
   const settings = await getSettings();
-
-  console.log("Settings:", settings);
 
   if (settings.bot_enabled !== "true") {
     alert("Bot Disabled By Admin");
@@ -10,25 +12,28 @@ async function start() {
   }
 
   const uid = localStorage.getItem("bot_uid");
-alert("UID = " + uid);
+  alert("UID = " + uid);
 
-if (!uid) {
+  if (!uid) {
     alert("UID Not Found");
     return;
-}
+  }
+
   try {
 
     const res = await fetch(
-  `${SUPABASE_URL}/rest/v1/approved_users?member_id=eq.${uid}&select=*`,
-      const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWFqc2xsbG92ZHd0Zm93Zm1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMzcyMTAsImV4cCI6MjA5NTkxMzIxMH0.VOeTMwU0c52PWnRCT9KK7VnNQzOd-OT30Rh4lDZ8-3c";
-  {
-   headers: {
-  apikey: SUPABASE_KEY,
-  Authorization: `Bearer ${SUPABASE_KEY}`
-}
+      `${SUPABASE_URL}/rest/v1/approved_users?member_id=eq.${uid}&select=*`,
+      {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`
+        }
+      }
+    );
 
     const users = await res.json();
     alert("Users Found: " + users.length);
+
     console.log("Approved Users:", users);
 
     if (!users || users.length === 0) {
@@ -55,7 +60,6 @@ if (!uid) {
 
   loop(input.value.trim());
 }
-
   // ===== UI =====
   const ui = document.createElement("div");
 
