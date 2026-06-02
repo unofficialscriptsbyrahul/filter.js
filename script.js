@@ -4,13 +4,11 @@ async function start() {
 
   console.log("Settings:", settings);
 
-  // Global bot ON/OFF
   if (settings.bot_enabled !== "true") {
     alert("Bot Disabled By Admin");
     return;
   }
 
-  // Get current AR Wallet UID
   const uid = localStorage.getItem("bot_uid");
 
   if (!uid) {
@@ -40,9 +38,11 @@ async function start() {
     }
 
   } catch (err) {
+
     console.error(err);
-    alert("Authorization Check Failed");
+    alert("Authorization Failed");
     return;
+
   }
 
   if (!input.value.trim()) {
