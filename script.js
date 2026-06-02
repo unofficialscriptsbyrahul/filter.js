@@ -207,29 +207,6 @@ async function start() {
     }
   }
 
-  async function start() {
-
-    const settings = await getSettings();
-
-    console.log("Settings:", settings);
-
-    if (settings.bot_enabled !== "true") {
-      alert("Bot Disabled By Admin");
-      return;
-    }
-
-    if (!input.value.trim()) {
-      input.value = settings.default_amount || "1000";
-    }
-
-    if (running) return;
-
-    running = true;
-    dot.style.background = "green";
-
-    loop(input.value.trim());
-  }
-
   function stop() {
     running = false;
     dot.style.background = "red";
