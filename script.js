@@ -1,38 +1,61 @@
-(function () {
-  if (window.__BOT__) return;
-  window.__BOT__ = true;
+async function start() {
 
-  const SUPABASE_URL = "https://bsmajslllovdwtfowfmc.supabase.co";
-  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWFqc2xsbG92ZHd0Zm93Zm1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMzcyMTAsImV4cCI6MjA5NTkxMzIxMH0.VOeTMwU0c52PWnRCT9KK7VnNQzOd-OT30Rh4lDZ8-3c";
+  const settings = await getSettings();
 
-  let running = false;
+  console.log("Settings:", settings);
 
-  async function getSettings() {
-    try {
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/settings?select=*`,
-        {
-          headers: {
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${SUPABASE_KEY}`
-          }
-        }
-      );
-
-      const data = await res.json();
-      const settings = {};
-
-      data.forEach(row => {
-        settings[row.setting_key] = row.setting_value;
-      });
-
-      return settings;
-
-    } catch (err) {
-      console.error("Supabase Error:", err);
-      return {};
-    }
+  // Global bot ON/OFF
+  if (settings.bot_enabled !== "true") {
+    alert("Bot Disabled By Admin");
+    return;
   }
+
+  // Get current AR Wallet UID
+  const uid = localStorage.getItem("bot_uid");
+
+  if (!uid) {
+    alert("UID Not Found");
+    return;
+  }
+
+  try {
+
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/approved_users?member_id=eq.${uid}&select=*`,
+      {
+        headers: {
+          apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWFqc2xsbG92ZHd0Zm93Zm1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMzcyMTAsImV4cCI6MjA5NTkxMzIxMH0.VOeTMwU0c52PWnRCT9KK7VnNQzOd-OT30Rh4lDZ8-3c,
+          Authorization: `Bearer ${eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWFqc2xsbG92ZHd0Zm93Zm1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMzcyMTAsImV4cCI6MjA5NTkxMzIxMH0.VOeTMwU0c52PWnRCT9KK7VnNQzOd-OT30Rh4lDZ8-3c}`
+        }
+      }
+    );
+
+    const users = await res.json();
+
+    console.log("Approved Users:", users);
+
+    if (!users || users.length === 0) {
+      alert("Not Authorized");
+      return;
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Authorization Check Failed");
+    return;
+  }
+
+  if (!input.value.trim()) {
+    input.value = settings.default_amount || "1000";
+  }
+
+  if (running) return;
+
+  running = true;
+  dot.style.background = "green";
+
+  loop(input.value.trim());
+}
 
   // ===== UI =====
   const ui = document.createElement("div");
