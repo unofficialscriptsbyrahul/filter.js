@@ -4,37 +4,54 @@
   window.__BOT__ = true;
 
   let running = false;
-    const SUPABASE_URL = "https://bsmajslllovdwtfowfmc.supabase.co";
 
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWFqc2xsbG92ZHd0Zm93Zm1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMzcyMTAsImV4cCI6MjA5NTkxMzIxMH0.VOeTMwU0c52PWnRCT9KK7VnNQzOd-OT30Rh4lDZ8-3c";
+  const SUPABASE_URL = "https://bsmajslllovdwtfowfmc.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzbWFqc2xsbG92ZHd0Zm93Zm1jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMzcyMTAsImV4cCI6MjA5NTkxMzIxMH0.VOeTMwU0c52PWnRCT9KK7VnNQzOd-OT30Rh4lDZ8-3c";
 
-   async function start() {
+  async function getSettings() {
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/settings?select=*`,
+        {
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`
+          }
+        }
+      );
 
-  alert("1");
+      const data = await res.json();
+      const settings = {};
 
-  const settings = await getSettings();
+      data.forEach(row => {
+        settings[row.setting_key] = row.setting_value;
+      });
 
-  alert("2");
+      return settings;
 
-  if (settings.bot_enabled !== "true") {
-    alert("Bot Disabled By Admin");
-    return;
+    } catch (err) {
+      console.error("Supabase Error:", err);
+      return {};
+    }
   }
 
-  alert("3");
-
-  const uid = localStorage.getItem("bot_uid");
-
-  alert("UID = " + uid);
-
-  if (!uid) {
-    alert("UID Not Found");
-    return;
-  }
-
-  alert("4");
+  async function start() {
 
   try {
+
+    const settings = await getSettings();
+
+    if (settings.bot_enabled !== "true") {
+      alert("Bot Disabled By Admin");
+      return;
+    }
+
+    const uid = localStorage.getItem("bot_uid");
+
+    if (!uid) {
+      alert("UID Not Found");
+      return;
+    }
 
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/approved_users?member_id=eq.${uid}&select=*`,
@@ -46,51 +63,30 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
       }
     );
 
-    alert("5");
-
     const users = await res.json();
-
-    alert("6");
-
-  } catch (err) {
-
-    alert("ERROR: " + err.message);
-    return;
-  }
-
-  alert("7");
-}
-      }
-    );
-
-    const users = await res.json();
-    alert("Users Found: " + users.length);
-
-    console.log("Approved Users:", users);
 
     if (!users || users.length === 0) {
       alert("Not Authorized");
       return;
     }
 
+    if (!input.value.trim()) {
+      input.value = settings.default_amount || "1000";
+    }
+
+    if (running) return;
+
+    running = true;
+    dot.style.background = "green";
+
+    loop(input.value.trim());
+
   } catch (err) {
 
     console.error(err);
-    alert("Authorization Failed");
-    return;
+    alert("ERROR: " + err.message);
 
   }
-
-  if (!input.value.trim()) {
-    input.value = settings.default_amount || "1000";
-  }
-
-  if (running) return;
-
-  running = true;
-  dot.style.background = "green";
-
-  loop(input.value.trim());
 }
   // ===== UI =====
   const ui = document.createElement("div");
