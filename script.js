@@ -65,10 +65,13 @@
 
     const users = await res.json();
 
-    if (!users || users.length === 0) {
-      alert("Not Authorized");
-      return;
-    }
+alert("UID = " + uid);
+alert(JSON.stringify(users));
+
+if (!users || users.length === 0) {
+  alert("Not Authorized");
+  return;
+}
 
     if (!input.value.trim()) {
       input.value = settings.default_amount || "1000";
